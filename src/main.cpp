@@ -2,7 +2,11 @@
 
 #include <GL/glut.h>
 
+//variables globales OpenGL
 int WINDOW, WIDTH, HEIGHT;
+
+//variables globales dimension scène et nombre d'itérations
+int l = 100, L = 100, N = 100;
 
 void main_reshape(int newWidth, int newHeight) {
     WIDTH = newWidth;
