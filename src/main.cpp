@@ -19,11 +19,11 @@ float cameraAngleX, cameraAngleY;
 float cameraDistance = 0;
 
 //size of the map
-const double w = 5;
-const double h = 5;
+const double w = 20;
+const double h = 20;
 
 //number of iterations
-const int N = 5;
+const int N = 2;
 //matrix size
 const int matSize = 2*N+1;
 //controls irregularity
@@ -35,13 +35,13 @@ vector<vector<double>> height_map(matSize, vector<double>(matSize));
 vector<vector<Vector3>> points(matSize, vector<Vector3>(matSize));
 
 void genPoints(vector<vector<Vector3>>& points, const double h, const double w, const int size) {
-	const double xStep = w / 2*N-1;
-	const double yStep = h / 2*N-1;
+	const double xStep = w / (size-1);
+	const double yStep = h / (size-1);
 	
-	for(int i = 1; i <= size; i++) {
-		for(int j = 1; j <= size; j++) {
+	for(int i = 0; i < size; i++) {
+		for(int j = 0; j < size; j++) {
 			Vector3 v(-w/2 + i*xStep, h/2 - j*yStep, 0.0);
-			points[i-1][j-1] = v;
+			points[i][j] = v;
 		}
 	}
 }
@@ -109,7 +109,7 @@ void drawPoints(vector<vector<Vector3>>& points, const int size) {
 	for(int i = 0; i < size; i++) {
 		for(int j = 0; j < size; j++) {
 			glColor3f(0.0, 1.0, 0.0);
-			glPointSize(10.0);
+			glPointSize(5.0);
 			glBegin(GL_POINTS);
 				glVertex3d(points[i][j].x, points[i][j].y, points[i][j].z);
 			glEnd();
@@ -145,21 +145,21 @@ void initOpenGL() {
 
 void display_basis() {
 	glBegin(GL_LINES);
-    glColor3f(1.0, 0.0, 0.0);
-    glVertex2f(0., 0.);
-    glVertex2f(1., 0.);
+    glColor3d(1., 0., 0.);
+    glVertex3d(0., 0., 0.);
+    glVertex3d(1., 0., 0.);
     glEnd();
 
     glBegin(GL_LINES);
-    glColor3f(0.0, 1.0, 0.0);
-    glVertex2f(0., 0.);
-    glVertex2f(0., 1.);
+    glColor3d(0., 1., 0.);
+    glVertex3d(0., 0., 0.);
+    glVertex3d(0., 1., 0.);
     glEnd();
 
     glBegin(GL_LINES);
-    glColor3f(0.0, 0.0, 1.0);
-    glVertex3f(0., 0., 0.);
-    glVertex3f(0., 0., 1.);
+    glColor3d(0., 0., 1.);
+    glVertex3d(0., 0., 0.);
+    glVertex3d(0., 0., 1.);
     glEnd();
 }
 
