@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cmath>
+#include <iostream>
 
 #include "vector2.h"
 
@@ -25,6 +26,10 @@ struct Vector3 {
 
     inline double distance(Vector3& v) {
         return sqrt(pow(v.x - this->x, 2) + pow(v.y - this->y, 2) + pow(v.z - this->z, 2));
+    }
+
+    inline void display() {
+        std::cout << "(" << x << ", " << y << ", " << z << ")" << std::endl;
     }
 };
 
