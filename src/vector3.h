@@ -32,15 +32,15 @@ struct Vector3 {
     inline double distance(Vector3& v) {
         return sqrt(pow(v.x - this->x, 2) + pow(v.y - this->y, 2) + pow(v.z - this->z, 2));
     }
-
-    inline Vector3& average(Vector3& v1, Vector3& v2, Vector3& v3, Vector3& v4) {
-        double x = (v1.x + v2.x + v3.x + v4.x) / 4;
-        double y = (v1.y + v2.y + v3.y + v4.y) / 4;
-        double z = (v1.z + v2.z + v3.z + v4.z) / 4;
-        Vector3 v(x, y, z);
-        return v;
-    }
 };
+
+inline Vector3 average(Vector3& v1, Vector3& v2, Vector3& v3, Vector3& v4) {
+    double x = (v1.x + v2.x + v3.x + v4.x) / 4;
+    double y = (v1.y + v2.y + v3.y + v4.y) / 4;
+    double z = (v1.z + v2.z + v3.z + v4.z) / 4;
+    Vector3 v(x, y, z);
+    return v;
+}
 
 inline Vector3 operator-(const Vector3& v1, const Vector3& v2) {
     return Vector3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);

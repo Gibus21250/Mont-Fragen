@@ -1,6 +1,7 @@
 #include <iostream>
 #include <GL/glut.h>
 #include <vector>
+#include <random>
 
 #include "vector3.h"
 #include "vector2.h"
@@ -31,7 +32,28 @@ void genMap(vector<vector<Vector2>>& terrain, const int size, const double rough
 	Vector2 v3(-h/2, -w/2);	terrain[size-1][0] = v3;
 	Vector2 v4(-h/2, w/2);	terrain[size-1][size-1] = v4;
 
-	
+	int i = size;
+	while(i > 0) {
+		int step = i / 2;
+
+		for(int x = 0; x < size; x+step) {
+			for(int y = 0; y < size; y+step) {
+				Vector2 avg = average(
+					terrain[x + step][y + step], 
+					terrain[x - step][y - step],
+					terrain[x - step][y + step],
+					terrain[x + step][y - step]
+				);
+				random_device rd;  
+    			mt19937 gen(rd()); 
+    			uniform_real_distribution<> dis(-roughness, roughness);
+				avg = avg + dis(gen);
+				terrain[x][y] = avg;
+			}
+		}
+
+		
+	}
 }
 
 void traceLine(Vector3& v1, Vector3& v2) {
