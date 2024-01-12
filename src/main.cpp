@@ -23,7 +23,7 @@ const double w = 5;
 const double h = 5;
 
 //number of iterations
-const int N = 100;
+const int N = 5;
 //matrix size
 const int matSize = 2*N+1;
 //controls irregularity
@@ -119,7 +119,7 @@ void drawPoints(vector<vector<Vector3>>& points, const int size) {
 
 void initOpenGL() {
 	// light
-    glClearColor(.5, .5, 0.5, 0.0);
+    glClearColor(.5, .5, .5, 0.0);
 
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -155,25 +155,12 @@ void display_basis() {
     glVertex2f(0., 0.);
     glVertex2f(0., 1.);
     glEnd();
+
     glBegin(GL_LINES);
     glColor3f(0.0, 0.0, 1.0);
     glVertex3f(0., 0., 0.);
     glVertex3f(0., 0., 1.);
     glEnd();
-}
-
-void main_reshape(int newWidth, int newHeight) {
-    WIDTH = newWidth;
-    HEIGHT = newHeight;
-
-    GLint viewport[4];
-	glViewport(0, 0, WIDTH, HEIGHT);
-	glGetIntegerv(GL_VIEWPORT, viewport);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-	glOrtho(0.0, viewport[2], 0.0, viewport[3], -50.0, 50.0);
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
 }
 
 void main_display(void) {
@@ -251,26 +238,26 @@ void motion(int x, int y) {
 }
 
 int main(int argc, char** argv) {
-    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
-	glutInitWindowSize(500, 500);
-	glutInitWindowPosition(0, 0);
-	glutInit(&argc, argv);
-	glEnable(GL_DEPTH_TEST);
+	 /* glut init and window creation */
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowPosition(200, 200);
+    glutInitWindowSize(600, 600);
 
 	WIDTH = glutGet(GLUT_WINDOW_WIDTH);
     HEIGHT = glutGet(GLUT_WINDOW_HEIGHT);
 
-	WINDOW = glutCreateWindow("Fragen Project");
+    WINDOW = glutCreateWindow("Fragen Project");
 
-	glutReshapeFunc(main_reshape);
-	glutDisplayFunc(main_display);
-	glutKeyboardFunc(keyboard);
-	glutMouseFunc(mouse);
-	glutMotionFunc(motion);
+    glutDisplayFunc(main_display);
+    glutKeyboardFunc(keyboard);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
 
-	initOpenGL();
+    initOpenGL();
 
-	glutMainLoop();
+    /* Enter glut's main loop */
+    glutMainLoop();
 
 	return 0;
 }
