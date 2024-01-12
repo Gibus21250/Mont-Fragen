@@ -11,48 +11,78 @@ using namespace std;
 //global variables OpenGL
 int WINDOW, WIDTH, HEIGHT;
 
-//terrain size
-const double h = 100;
-const double w = 100;
+//size of the map
+const double w = 10;
+const double h = 5;
 
 //number of iterations
-const int N = 25;
+const int N = 5;
 //matrix size
 const int matSize = 2*N+1;
 //controls irregularity
-const double roughness = 1.0f;
+double roughness = 1.0f;
+//controls fractal dimension of the mountain
+const double h = 10;
 
-vector<vector<Vector2>> terrain(matSize, vector<Vector2>(matSize));
+vector<vector<double>> height_map(matSize, vector<double>(matSize));
+vector<vector<Vector3>> points(matSize, vector<Vector3>(matSize));
+
+void genPoints(vector<vector<Vector3>>& points, const double h, const double w) {
+	const double xStep = w / 2*N-1;
+	const double yStep = h / 2*N-1;
+	
+	
+}
 
 //diamondSquare algorithm
-void genMap(vector<vector<Vector2>>& terrain, const int size, const double roughness) {
+void genMap(vector<vector<double>>& height_map, const int size, double roughness) {
 	//init corners
-	Vector2 v1(	h/2, -w/2);	terrain[0][0] = v1;
-	Vector2 v2(	h/2, w/2);	terrain[0][size-1] = v2;
-	Vector2 v3(-h/2, -w/2);	terrain[size-1][0] = v3;
-	Vector2 v4(-h/2, w/2);	terrain[size-1][size-1] = v4;
+	random_device rd;  
+    mt19937 gen(rd());
+	uniform_real_distribution<> dis(0, h);
 
-	int i = size;
-	while(i > 0) {
-		int step = i / 2;
+	height_map[0][0] = dis(gen);
+	height_map[0][size-1] = dis(gen);
+	height_map[size-1][0] = dis(gen);
+	height_map[size-1][size-1] = dis(gen);
 
-		for(int x = 0; x < size; x+step) {
-			for(int y = 0; y < size; y+step) {
-				Vector2 avg = average(
-					terrain[x + step][y + step], 
-					terrain[x - step][y - step],
-					terrain[x - step][y + step],
-					terrain[x + step][y - step]
-				);
-				random_device rd;  
-    			mt19937 gen(rd()); 
-    			uniform_real_distribution<> dis(-roughness, roughness);
-				avg = avg + dis(gen);
-				terrain[x][y] = avg;
+	int chunkSize = size - 1;
+	while(chunkSize > 1) {
+		int half = chunkSize / 2;
+		cout << half << endl;
+
+		//square rule
+		for(int x = 0; x < size; x+=chunkSize) {
+			for(int y = 0; y < size; y+=chunkSize) {
+				//rand
+
+				height_map[x+half][y+half] = (	
+					height_map[x][y] + 
+					height_map[x][y+chunkSize] +
+					height_map[x+chunkSize][y] +
+					height_map[x+chunkSize][y+chunkSize]
+				) / 4 + rand;
 			}
 		}
-
 		
+		//diamond rule
+		/*for(int x = 0; x < size; x+=half) {
+			for(int y = (x + half) % chunkSize; y < size; y+=chunkSize) {
+				random_device rd;  
+    			mt19937 gen(rd());
+				uniform_real_distribution<> dis(-half*roughness, half*roughness);
+
+				height_map[x][y] = (	
+					height_map[x+half][y] + 
+					height_map[x-half][y] +
+					height_map[x][y+half] +
+					height_map[x][y-half]
+				) / 4 + dis(gen);
+			}
+		}*/
+		
+		chunkSize /= 2;
+		roughness /= 2;
 	}
 }
 
@@ -102,7 +132,7 @@ int main(int argc, char** argv) {
 	WIDTH = glutGet(GLUT_WINDOW_WIDTH);
     HEIGHT = glutGet(GLUT_WINDOW_HEIGHT);
 
-	genMap(terrain, matSize, roughness);
+	genMap(height_map, matSize, roughness);
 
 	WINDOW = glutCreateWindow("Projet montagne fractales");
 	glutReshapeFunc(main_reshape);

@@ -27,14 +27,6 @@ struct Vector2
     }
 };
 
-inline Vector2& average(Vector2& v1, Vector2& v2, Vector2& v3, Vector2& v4)
-{
-    double x = (v1.x + v2.x + v3.x + v4.x) / 4;
-    double y = (v1.y + v2.y + v3.y + v4.y) / 4;
-    Vector2 v(x, y);
-    return v;
-}
-
 inline Vector2 operator-(const Vector2& v1, const Vector2& v2)
 {
     return Vector2(v1.x - v2.x, v1.y - v2.y);
