@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "vector3.h"
+#include "vector2.h"
 
 using namespace std;
 
@@ -14,21 +15,21 @@ const double h = 100;
 const double w = 100;
 
 //number of iterations
-const int N = 100;
+const int N = 25;
 //matrix size
-const int matSize = pow(2, N) + 1;
+const int matSize = 2*N+1;
 //controls irregularity
 const double roughness = 1.0f;
 
-vector<vector<Vector3>> terrain(matSize, vector<Vector3>(matSize));
+vector<vector<Vector2>> terrain(matSize, vector<Vector2>(matSize));
 
 //diamondSquare algorithm
-void genMap(vector<vector<Vector3>>& terrain, const int size, const double roughness) {
+void genMap(vector<vector<Vector2>>& terrain, const int size, const double roughness) {
 	//init corners
-	Vector3 v1(	h/2, -w/2, 	0.0);	terrain[0][0] = v1;
-	Vector3 v2(	h/2, w/2, 	0.0);	terrain[0][size-1] = v2;
-	Vector3 v3(-h/2, -w/2, 	0.0);	terrain[size-1][0] = v3;
-	Vector3 v4(-h/2, w/2, 	0.0);	terrain[size-1][size-1] = v4;
+	Vector2 v1(	h/2, -w/2);	terrain[0][0] = v1;
+	Vector2 v2(	h/2, w/2);	terrain[0][size-1] = v2;
+	Vector2 v3(-h/2, -w/2);	terrain[size-1][0] = v3;
+	Vector2 v4(-h/2, w/2);	terrain[size-1][size-1] = v4;
 
 	
 }
@@ -78,6 +79,8 @@ int main(int argc, char** argv) {
 
 	WIDTH = glutGet(GLUT_WINDOW_WIDTH);
     HEIGHT = glutGet(GLUT_WINDOW_HEIGHT);
+
+	genMap(terrain, matSize, roughness);
 
 	WINDOW = glutCreateWindow("Projet montagne fractales");
 	glutReshapeFunc(main_reshape);
