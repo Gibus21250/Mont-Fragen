@@ -5,6 +5,7 @@
 
 #include "vector3.h"
 #include "vector2.h"
+#include "gen_map.h"
 
 using namespace std;
 
@@ -18,118 +19,6 @@ float mouseX, mouseY;
 float cameraAngleX, cameraAngleY;
 float cameraDistance = 0;
 
-//size of the map
-const double w = 5;
-const double h = 5;
-
-//number of iterations
-const int N = 5;
-//matrix size
-const int matSize = (2*N)+1;
-//controls fractal dimension of the mountain
-const double H = 10;
-
-vector<vector<double>> height_map(matSize, vector<double>(matSize));
-vector<vector<Vector3>> points(matSize, vector<Vector3>(matSize));
-
-void genPoints(vector<vector<Vector3>>& points, const double h, const double w, const int size) {
-	const double xStep = w / (size-1);
-	const double yStep = h / (size-1);
-	
-	for(int i = 0; i < size; i++) {
-		for(int j = 0; j < size; j++) {
-			Vector3 v(-w/2 + i*xStep, 0.0,  h/2 - j*yStep);
-			points[i][j] = v;
-		}
-	}
-}
-
-double distance(double x1, double y1, double x2, double y2) {
-    return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
-}
-
-void printPoints(vector<vector<Vector3>>& points, const int size) {
-    for(int i = 0; i<size; i++) {
-        for(int j = 0; j<size; j++) {
-            points[i][j].display();
-        }
-    }
-}
-
-//diamondSquare algorith
-void genMap(vector<vector<Vector3>>& points, vector<vector<double>>& height_map, const int size) {
-	random_device rd;  
-    mt19937 gen(rd());
-	uniform_real_distribution<> disInit(0, H);
-    uniform_real_distribution<> disHeightRand(-1, 1);
-
-	//4 corners initialized
-	height_map[0][0] = disInit(gen);                points[0][0].y = height_map[0][0];
-	height_map[0][size-1] = disInit(gen);           points[0][size-1].y = height_map[0][size-1];
-	height_map[size-1][0] = disInit(gen);           points[size-1][0].y = height_map[size-1][0];
-	height_map[size-1][size-1] = disInit(gen);      points[size-1][size-1].y = height_map[size-1][size-1];
-
-    int chunkSize = size - 1;
-    while(chunkSize > 1) {
-        int half = chunkSize / 2;
-
-        //square rule
-        for(int x = half; x < size; x += chunkSize) {
-            for(int y = half; y < size; y += chunkSize) {
-                double avg = (
-                    height_map[x - half][y - half] +
-                    height_map[x + half][y + half] +
-                    height_map[x - half][y + half] +
-                    height_map[x + half][y - half]
-                ) / 4;
-
-                double dist = distance(points[x][y].x, points[x][y].z, points[x+half][y+half].x, points[x+half][y+half].z);
-                height_map[x][y] = avg + (disHeightRand(gen) * dist * pow(2, -H));
-                points[x][y].y = height_map[x][y];
-            }
-        }
-
-        int shift = 0;
-        //diamond rule
-        for(int x = 0; x < size; x += chunkSize) {
-            if(shift == 0) shift = chunkSize;
-            else shift = 0;
-
-            for(int y = shift; y < size; y += chunkSize) {
-                double sum = 0;
-                int n = 0;
-                double dist = 0;
-
-                if(x >= half) {
-                    sum += height_map[x - half][y];
-                    n++;
-                    dist = distance(points[x][y].x, points[x][y].z, points[x - half][y].x, points[x - half][y].z);
-                }
-                if(x + half < size) {
-                    sum += height_map[x + half][y];
-                    n++;
-                    dist = distance(points[x][y].x, points[x][y].z, points[x + half][y].x, points[x + half][y].z);
-                }
-                if(y >= half) {
-                    sum += height_map[x][y - half];
-                    n++;
-                    dist = distance(points[x][y].x, points[x][y].z, points[x][y - half].x, points[x][y - half].z);
-                }
-                if(y + half > size) {
-                    sum += height_map[x][y + half];
-                    n++;
-                    dist = distance(points[x][y].x, points[x][y].z, points[x][y + half].x, points[x][y + half].z);
-                }
-
-                double avg = sum / n;
-                height_map[x][y] = avg + (disHeightRand(gen) * dist * pow(2, -H));
-                points[x][y].y = height_map[x][y];
-            }
-        }
-        chunkSize = half;
-    }
-}
-
 void traceLine(Vector3& v1, Vector3& v2) {
 	glBegin(GL_LINES);
     	glVertex3d(v1.x, v1.y, v1.z);
@@ -137,19 +26,20 @@ void traceLine(Vector3& v1, Vector3& v2) {
     glEnd();
 }
 
-void drawPoints(vector<vector<Vector3>>& points, const int size) {
+void drawPoints(vector<GLdouble>& points, const int size) {
 	for(int i = 0; i < size; i++) {
 		for(int j = 0; j < size; j++) {
+            int index = 3 * (i * matSize + j);
 			glColor3f(0.0, 1.0, 0.0);
 			glPointSize(3.0);
 			glBegin(GL_POINTS);
-				glVertex3d(points[i][j].x, points[i][j].y, points[i][j].z);
+				glVertex3d(points[index], points[index+1], points[index+2]);
 			glEnd();
 		}
 	}
 }
 
-void drawWiredScene(vector<vector<Vector3>>& points, const int size) {
+void drawWiredScene(vector<vector<Vector3&>>& points, const int size) {
 	for(int i = 0; i < size; i++) {
 		for(int j = 0; j < size; j++) {
 			
@@ -183,9 +73,8 @@ void initOpenGL() {
     // glTranslatef(0.0,0.0,-5.0);
 
     //generate map geometry
-    genPoints(points, h, w, matSize);
-	genMap(points, height_map, matSize);
-    //printPoints(points, matSize);
+    genPoints();
+	genMap();
 
 }
 
