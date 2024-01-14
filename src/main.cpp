@@ -19,13 +19,13 @@ float cameraAngleX, cameraAngleY;
 float cameraDistance = 0;
 
 //size of the map
-const double w = 100;
-const double h = 100;
+const double w = 5;
+const double h = 5;
 
 //number of iterations
-const int N = 20;
+const int N = 5;
 //matrix size
-const int matSize = 2*N+1;
+const int matSize = (2*N)+1;
 //controls fractal dimension of the mountain
 const double H = 10;
 
@@ -56,7 +56,7 @@ void printPoints(vector<vector<Vector3>>& points, const int size) {
     }
 }
 
-//diamondSquare algorithm
+//diamondSquare algorith
 void genMap(vector<vector<Vector3>>& points, vector<vector<double>>& height_map, const int size) {
 	random_device rd;  
     mt19937 gen(rd());
@@ -83,18 +83,19 @@ void genMap(vector<vector<Vector3>>& points, vector<vector<double>>& height_map,
                     height_map[x + half][y - half]
                 ) / 4;
 
-                height_map[x][y] = avg + (disHeightRand(gen) * distance(points[x][y].x, points[x][y].z, points[x+half][y+half].x, points[x+half][y+half].z) * pow(2, -H));
+                double dist = distance(points[x][y].x, points[x][y].z, points[x+half][y+half].x, points[x+half][y+half].z);
+                height_map[x][y] = avg + (disHeightRand(gen) * dist * pow(2, -H));
                 points[x][y].y = height_map[x][y];
             }
         }
 
         int shift = 0;
         //diamond rule
-        for(int x = 0; x < size; x+=chunkSize) {
+        for(int x = 0; x < size; x += chunkSize) {
             if(shift == 0) shift = chunkSize;
             else shift = 0;
 
-            for(int y = shift; y < size; y+=chunkSize) {
+            for(int y = shift; y < size; y += chunkSize) {
                 double sum = 0;
                 int n = 0;
                 double dist = 0;
@@ -184,23 +185,26 @@ void initOpenGL() {
     //generate map geometry
     genPoints(points, h, w, matSize);
 	genMap(points, height_map, matSize);
-    printPoints(points, matSize);
+    //printPoints(points, matSize);
 
 }
 
 void display_basis() {
+    //x axis
 	glBegin(GL_LINES);
     glColor3d(1., 0., 0.);
     glVertex3d(0., 0., 0.);
     glVertex3d(1., 0., 0.);
     glEnd();
 
+    //y axis
     glBegin(GL_LINES);
     glColor3d(0., 1., 0.);
     glVertex3d(0., 0., 0.);
     glVertex3d(0., 1., 0.);
     glEnd();
 
+    //z axis
     glBegin(GL_LINES);
     glColor3d(0., 0., 1.);
     glVertex3d(0., 0., 0.);
