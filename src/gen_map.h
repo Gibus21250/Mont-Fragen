@@ -21,6 +21,7 @@ extern double H;
 
 extern vector<vector<double>> height_map;
 extern vector<GLdouble> points;
+extern vector<GLint> indexFaces;
 
 double distance(double x1, double y1, double x2, double y2);
 
@@ -34,6 +35,7 @@ int getPointIndexFromHeightMap(int i, int j);
 
 //Generate x and z coordinates of the points (y is altitude determined in genMap)
 void genPoints();
+void genFaces();
 
 void genMap();
 

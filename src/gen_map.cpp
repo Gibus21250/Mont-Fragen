@@ -5,14 +5,16 @@
 
 #include "gen_map.h"
 
-double w = 10;
-double h = 10;
-int N = 5;
+double w = 50;
+double h = 50;
+int N = 4;
 int matSize = (2*N)+1;
-double H = 10;
+double H = 150;
 
-vector<vector<double>> height_map(matSize, vector<double>(matSize));
+vector<vector<double>> height_map(matSize, vector<double>(matSize, 0.0));
 vector<GLdouble> points(matSize * matSize * 3, 0.0);
+//formula to get 2 faces per square of the matrix, *3 because each face has 3 points
+vector<GLint> indexFaces((matSize-1)*(matSize-1) * 2 * 3, 0); 
 
 double distance(double x1, double y1, double x2, double y2) {
     return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
@@ -37,6 +39,17 @@ int getPointIndexFromHeightMap(int i, int j) {
     return 3 * (i * matSize + j);
 }
 
+void genFaces() {
+    for(int i = 0; i < matSize-2; i++) {
+        for(int j = 0; j < matSize-2; j++) {
+            int p1Index = i * matSize + j;
+            int p2Index = p1Index + 1;
+            int p3Index = (i + 1) * matSize + j;
+            int p4Index = p3Index+1; 
+        }
+    }
+}
+
 void genPoints() {
 	const double xStep = w / (matSize-1);
 	const double yStep = h / (matSize-1);
@@ -49,6 +62,8 @@ void genPoints() {
             points[index+2] = h/2 - j*yStep;        //z
 		}
 	}
+
+    genFaces();
 }
 
 //diamondSquare algorith
@@ -78,9 +93,9 @@ void genMap() {
                     height_map[x + half][y - half]
                 ) / 4;
 
-                double dist = distance(getX(x, y), getZ(x, y), getX(x+1, y+1), getZ(x+1, y+1));
+                double dist = distance(getX(x, y), getZ(x, y), getX(x+half, y+half), getZ(x+half, y+half));
                 height_map[x][y] = avg + (disHeightRand(gen) * dist * pow(2, -H));
-                points[getPointIndexFromHeightMap(x, y)+1] = height_map[x][y];
+                points[getPointIndexFromHeightMap(x, y)+1] = height_map[x][y]; 
             }
         }
 
