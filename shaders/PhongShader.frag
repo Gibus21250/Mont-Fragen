@@ -14,6 +14,7 @@ uniform mat4 MODEL;
 //in
 in vec4 fragPosition;
 in vec3 vNormal;
+in vec3 fragColor;
 
 out vec4 finalColor;
 
@@ -34,9 +35,9 @@ void main() {
     rtolight = normalize(rtolight);
     
     
-    vec3 colorA = l_ambientCoefficient * vec3(0, 0, 1);
-    vec3 colorD = max(0, dot(nvNormal, toLight)) * l_intensity * vec3(0.,1., 0.) * 1/dist2;
-    vec3 colorS = pow(max(0, dot(toCamera, rtolight)), 5) * vec3(1.,0.,0.) * 1/dist2;
+    vec3 colorA = l_ambientCoefficient * fragColor;
+    vec3 colorD = max(0, dot(nvNormal, toLight)) * l_intensity * fragColor * 1/dist2;
+    vec3 colorS = pow(max(0, dot(toCamera, rtolight)), 5) * fragColor * 1/dist2;
 
-    finalColor = vec4(colorA, 1.) + vec4(colorD, 1.)+ vec4(colorS, 1);
+    finalColor = vec4(colorA, 1) + vec4(colorD, 1) + vec4(colorS, 1);
 }

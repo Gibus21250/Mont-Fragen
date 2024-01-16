@@ -26,6 +26,7 @@ int nbTriangle = 0;
 glm::vec3 *tSommets;
 glm::vec3 *tNormales;
 glm::uvec3 *tIndices;
+glm::vec3 *tColors;
 
 glm::vec3 pTest[] = {
     {-25, 0, 25},
@@ -70,6 +71,7 @@ float cameraDistance = 0.;
 GLuint programID;                                                     // handle pour le shader
 GLuint MatrixIDMVP, MatrixIDView, MatrixIDModel, MatrixIDPerspective; // handle pour la matrice MVP
 GLuint VBO_sommets, VBO_normales, VBO_indices, VBO_UVtext, VAO;
+GLuint VBO_sommets, VBO_normales, VBO_Colors, VBO_indices, VAO;
 GLuint locCameraPosition;
 GLuint locmaterialShininess;
 GLuint locmaterialSpecularColor;
@@ -93,6 +95,7 @@ struct LightInfoCPU
 // location des VBO
 //------------------
 GLuint indexVertex = 0, indexNormale = 1;
+GLuint indexVertex = 0, indexNormale = 1, indexColors = 2;
 
 // variable pour paramétrage eclairage
 //--------------------------------------
@@ -117,9 +120,10 @@ GLuint locationTexture, locationNormalMap;
 void initBuffers()
 {
   cout << nbVertex * sizeof(glm::vec3) << "\n";
-  tSommets = (glm::vec3*) malloc(nbVertex * sizeof(glm::vec3));
-  tNormales = (glm::vec3*) malloc(nbVertex * sizeof(glm::vec3));
-  //tIndices = (glm::uvec3*) malloc(nbFace * sizeof(glm::uvec3));
+  tSommets = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
+  tColors = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
+  tNormales = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
+  // tIndices = (glm::uvec3*) malloc(nbFace * sizeof(glm::uvec3));
 }
 
 void clearBuffers()
@@ -127,13 +131,14 @@ void clearBuffers()
   free(tSommets);
   free(tNormales);
   free(tIndices);
+  free(tColors);
 }
 //----------------------------------------
 void initOpenGL(void)
 //----------------------------------------
 {
-  //glCullFace(GL_BACK);    // on spécifie queil faut éliminer les face arriere
-  //glEnable(GL_CULL_FACE); // on active l'élimination des faces qui par défaut n'est pas active
+  glCullFace(GL_BACK);    // on spécifie queil faut éliminer les face arriere
+  glEnable(GL_CULL_FACE); // on active l'élimination des faces qui par défaut n'est pas active
   glEnable(GL_DEPTH_TEST);
   // le shader
   programID = LoadShaders("shaders/PhongShader.vert", "shaders/PhongShader.frag");
@@ -193,7 +198,7 @@ int main(int argc, char **argv)
   initBuffers();
 
   initOpenGL();
-  initPoints(tSommets, N, w, h);
+  initPoints(tSommets, tColors, N, w, h);
   cout << "oui\n";
   nbTriangle = initFaces(&tIndices, N);
   cout << "nbTriangle générée:" << nbTriangle << "\n";
