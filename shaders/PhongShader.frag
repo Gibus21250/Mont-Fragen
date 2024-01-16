@@ -18,7 +18,7 @@ in vec3 fragColor;
 out vec4 finalColor;
 
 void main() {
-    vec3 directLight = vec3(0, -1/sqrt(2), -1/sqrt(2));
+    vec3 directLight = vec3(0, -1/sqrt(5./4), -1/2*sqrt(5./4));
     vec3 nvNormal = normalize(vNormal);
 
     nvNormal = transpose(inverse(mat3 (MODEL))) * nvNormal;
