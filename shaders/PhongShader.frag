@@ -38,5 +38,6 @@ void main() {
     vec3 colorD = max(0, dot(nvNormal, toLight)) * l_intensity * vec3(0.,1., 0.) * 1/dist2;
     vec3 colorS = pow(max(0, dot(toCamera, rtolight)), 5) * vec3(1.,0.,0.) * 1/dist2;
 
-    finalColor = vec4(colorA, 1.) + vec4(colorD, 1.)+ vec4(colorS, 1);
+    //finalColor = vec4(colorA, 1.) + vec4(colorD, 1.)+ vec4(colorS, 1);
+    finalColor = vec4(1,0,0, 1.);
 }
