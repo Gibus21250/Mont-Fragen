@@ -18,10 +18,10 @@
 using namespace glm;
 using namespace std;
 
-const int N = 1; //Correspond à la résolutions
+const int N = 2; //Correspond à la résolutions
 
 const int nbVertex = (2 * N + 1) * (2 * N + 1);
-const int nbFace = (N + 1) * (N + 1) * 2;
+const int nbFace = N * N * 2;
 
 glm::vec3 *tSommets;
 glm::vec3 *tNormales;
@@ -38,7 +38,7 @@ GLuint iTest[] = {
 double w = 10; // largeur de la matrice dans le monde
 double h = 10; // longueur de la matrice dans le monde
 
-double H = 150;
+double H = 1;
 
 void initBuffers();
 void clearBuffers();
@@ -206,6 +206,14 @@ int main(int argc, char **argv)
   {
     cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
   }
+
+  generateDiamondSquare(tSommets, N, 5, H);
+
+  for (size_t i = 0; i < nbVertex; i++)
+  {
+    cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
+    tNormales[i] = {0, 1, 0};
+  }
   
   // construction des VBO a partir des tableaux du cube deja construit
   genereVBO();
@@ -282,7 +290,7 @@ void affichage()
 
   /* effacement de l'image avec la couleur de fond */
   /* Initialisation d'OpenGL */
-  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearColor(119/255., 181/255., 254/255., 0.0);
   glClearDepth(10.0f); // 0 is near, >0 is far
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glColor3f(1.0, 1.0, 1.0);
@@ -330,7 +338,7 @@ void traceObjet()
 
   // pour l'affichage
   glBindVertexArray(VAO);                                             // on active le VAO
-  glDrawElements(GL_TRIANGLES, nbFace, GL_UNSIGNED_INT, 0);           // on appelle la fonction dessin
+  glDrawElements(GL_TRIANGLES, nbFace * sizeof(glm::uvec3), GL_UNSIGNED_INT, 0);           // on appelle la fonction dessin
   glBindVertexArray(0);                                              // on desactive les VAO
   glUseProgram(0);                                                   // et le pg
 
