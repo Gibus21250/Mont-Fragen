@@ -18,7 +18,7 @@
 using namespace glm;
 using namespace std;
 
-const int N = 1; // Correspond à la résolutions
+const int N = 3; // Correspond à la résolutions
 
 const int nbVertex = (2 * N + 1) * (2 * N + 1);
 int nbTriangle = 0;

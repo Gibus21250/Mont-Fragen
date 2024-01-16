@@ -103,7 +103,7 @@ void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H)
                               points[x + half + (y + half) * (2 * N + 1)].y) /
                              4;
 
-                // TODO ajuster si necessaire
+                // TODO ajuster car NECESSAIRE
                 double dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y - half) * (2 * N + 1)])) + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y - half) * (2 * N + 1)])) + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y + half) * (2 * N + 1)])) + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y + half) * (2 * N + 1)]));
 
                 dist = dist / 4;
