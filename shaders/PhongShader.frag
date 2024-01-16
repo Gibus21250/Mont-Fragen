@@ -9,7 +9,6 @@ uniform float l_attenuation;
 uniform vec3 cameraPosition;
 
 //texture
-uniform sampler2D myTextureSampler;
 uniform mat4 MODEL;
 
 //in
