@@ -18,10 +18,10 @@
 using namespace glm;
 using namespace std;
 
-const int N = 2; //Correspond à la résolutions
+const int N = 1; //Correspond à la résolutions
 
 const int nbVertex = (2 * N + 1) * (2 * N + 1);
-const int nbFace = N * N * 2;
+int nbTriangle = 0;
 
 glm::vec3 *tSommets;
 glm::vec3 *tNormales;
@@ -38,7 +38,7 @@ GLuint iTest[] = {
 double w = 10; // largeur de la matrice dans le monde
 double h = 10; // longueur de la matrice dans le monde
 
-double H = 1;
+double H = .2;
 
 void initBuffers();
 void clearBuffers();
@@ -119,7 +119,7 @@ void initBuffers()
   cout << nbVertex * sizeof(glm::vec3) << "\n";
   tSommets = (glm::vec3*) malloc(nbVertex * sizeof(glm::vec3));
   tNormales = (glm::vec3*) malloc(nbVertex * sizeof(glm::vec3));
-  tIndices = (glm::uvec3*) malloc(nbFace * sizeof(glm::uvec3));
+  //tIndices = (glm::uvec3*) malloc(nbFace * sizeof(glm::uvec3));
 }
 
 void clearBuffers()
@@ -194,7 +194,10 @@ int main(int argc, char **argv)
 
   initOpenGL();
   initPoints(tSommets, N, w, h);
-  initFaces(tIndices, N);
+  cout << "oui\n";
+  nbTriangle = initFaces(&tIndices, N);
+  cout << "nbTriangle générée:" << nbTriangle << "\n";
+  cout << "nbPoint:" << nbVertex << "\n";
 
   for (size_t i = 0; i < nbVertex; i++)
   {
@@ -202,7 +205,7 @@ int main(int argc, char **argv)
     tNormales[i] = {0, 1, 0};
   }
   cout << "----------\n";
-  for (size_t i = 0; i < nbFace; i++)
+  for (size_t i = 0; i < nbTriangle; i++)
   {
     cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
   }
@@ -212,8 +215,9 @@ int main(int argc, char **argv)
   for (size_t i = 0; i < nbVertex; i++)
   {
     cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
-    tNormales[i] = {0, 1, 0};
   }
+
+  computeNormales(tNormales, N);
   
   // construction des VBO a partir des tableaux du cube deja construit
   genereVBO();
@@ -260,7 +264,7 @@ void genereVBO()
   if (glIsBuffer(VBO_indices) == GL_TRUE)
     glDeleteBuffers(1, &VBO_indices);
   glGenBuffers(1, &VBO_indices); // ATTENTIOn IBO doit etre un GL_ELEMENT_ARRAY_BUFFER
-  cout << "taille indices: " << sizeof(tIndices) * sizeof(glm::uvec3) << "\n";
+  cout << "taille indices: " << nbTriangle * sizeof(glm::uvec3) << "\n";
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBO_indices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, nbVertex * sizeof(glm::uvec3), tIndices, GL_STATIC_DRAW);
   //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(iTest), iTest, GL_STATIC_DRAW);
@@ -338,7 +342,7 @@ void traceObjet()
 
   // pour l'affichage
   glBindVertexArray(VAO);                                             // on active le VAO
-  glDrawElements(GL_TRIANGLES, nbFace * sizeof(glm::uvec3), GL_UNSIGNED_INT, 0);           // on appelle la fonction dessin
+  glDrawElements(GL_TRIANGLES, nbTriangle * 3, GL_UNSIGNED_INT, 0);           // on appelle la fonction dessin
   glBindVertexArray(0);                                              // on desactive les VAO
   glUseProgram(0);                                                   // et le pg
 
@@ -411,6 +415,14 @@ void clavier(unsigned char touche, int x, int y)
   case 'A': /* Affichage en mode sommets seuls */
     LightInfoCPU.ambientCoeff += .1;
     cout << LightInfoCPU.ambientCoeff << "\n";
+    glutPostRedisplay();
+    break;
+  case 'h': /* Affichage en mode sommets seuls */
+    nbTriangle++;
+    glutPostRedisplay();
+    break;
+  case 'g': /* Affichage en mode sommets seuls */
+    nbTriangle--;
     glutPostRedisplay();
     break;
 
