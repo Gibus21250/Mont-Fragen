@@ -18,7 +18,7 @@
 using namespace glm;
 using namespace std;
 
-const int N = 1; //Correspond à la résolutions
+const int N = 1; // Correspond à la résolutions
 
 const int nbVertex = (2 * N + 1) * (2 * N + 1);
 int nbTriangle = 0;
@@ -39,7 +39,7 @@ GLuint iTest[] = {
 double w = 10; // largeur de la matrice dans le monde
 double h = 10; // longueur de la matrice dans le monde
 
-double H = .2;
+double H = 2;
 
 void initBuffers();
 void clearBuffers();
@@ -48,7 +48,6 @@ void clearBuffers();
 void genereVBO();
 void deleteVBO();
 void traceObjet();
-
 
 // fonctions de rappel de glut
 void affichage();
@@ -70,7 +69,6 @@ float cameraDistance = 0.;
 //--------------------------
 GLuint programID;                                                     // handle pour le shader
 GLuint MatrixIDMVP, MatrixIDView, MatrixIDModel, MatrixIDPerspective; // handle pour la matrice MVP
-GLuint VBO_sommets, VBO_normales, VBO_indices, VBO_UVtext, VAO;
 GLuint VBO_sommets, VBO_normales, VBO_Colors, VBO_indices, VAO;
 GLuint locCameraPosition;
 GLuint locmaterialShininess;
@@ -94,7 +92,6 @@ struct LightInfoCPU
 
 // location des VBO
 //------------------
-GLuint indexVertex = 0, indexNormale = 1;
 GLuint indexVertex = 0, indexNormale = 1, indexColors = 2;
 
 // variable pour paramétrage eclairage
@@ -204,17 +201,17 @@ int main(int argc, char **argv)
   cout << "nbTriangle générée:" << nbTriangle << "\n";
   cout << "nbPoint:" << nbVertex << "\n";
 
-  for (size_t i = 0; i < nbVertex; i++)
-  {
-    cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
-    tNormales[i] = {0, 1, 0};
-  }
+  /*
+    for (size_t i = 0; i < nbVertex; i++)
+    {
+      cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
+      tNormales[i] = {0, 1, 0};
+    }*/
   cout << "----------\n";
   for (size_t i = 0; i < nbTriangle; i++)
   {
     cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
   }
-
   generateDiamondSquare(tSommets, N, 5, H);
 
   for (size_t i = 0; i < nbVertex; i++)
@@ -223,7 +220,7 @@ int main(int argc, char **argv)
   }
 
   computeNormales(tNormales, N);
-  
+
   // construction des VBO a partir des tableaux du cube deja construit
   genereVBO();
 
@@ -240,7 +237,7 @@ int main(int argc, char **argv)
   clearBuffers();
   glDeleteProgram(programID);
   deleteVBO();
-  
+
   return 0;
 }
 
@@ -255,7 +252,7 @@ void genereVBO()
   glBindBuffer(GL_ARRAY_BUFFER, VBO_sommets);
   cout << "taille sommets: " << nbVertex * sizeof(glm::vec3) << "\n";
   glBufferData(GL_ARRAY_BUFFER, nbVertex * sizeof(glm::vec3), tSommets, GL_STATIC_DRAW);
-  //glBufferData(GL_ARRAY_BUFFER, sizeof(pTest), pTest, GL_STATIC_DRAW);
+  // glBufferData(GL_ARRAY_BUFFER, sizeof(pTest), pTest, GL_STATIC_DRAW);
   glVertexAttribPointer(indexVertex, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
 
   if (glIsBuffer(VBO_normales) == GL_TRUE)
@@ -266,17 +263,24 @@ void genereVBO()
   glBufferData(GL_ARRAY_BUFFER, nbVertex * sizeof(glm::vec3), tNormales, GL_STATIC_DRAW);
   glVertexAttribPointer(indexNormale, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
 
+  if (glIsBuffer(VBO_Colors) == GL_TRUE)
+    glDeleteBuffers(1, &VBO_Colors);
+  glGenBuffers(1, &VBO_Colors);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO_Colors);
+  glBufferData(GL_ARRAY_BUFFER, nbVertex * sizeof(glm::vec3), tColors, GL_STATIC_DRAW);
+  glVertexAttribPointer(indexColors, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+
   if (glIsBuffer(VBO_indices) == GL_TRUE)
     glDeleteBuffers(1, &VBO_indices);
   glGenBuffers(1, &VBO_indices); // ATTENTIOn IBO doit etre un GL_ELEMENT_ARRAY_BUFFER
   cout << "taille indices: " << nbTriangle * sizeof(glm::uvec3) << "\n";
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBO_indices);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, nbVertex * sizeof(glm::uvec3), tIndices, GL_STATIC_DRAW);
-  //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(iTest), iTest, GL_STATIC_DRAW);
-
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, nbTriangle * sizeof(glm::uvec3), tIndices, GL_STATIC_DRAW);
+  // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(iTest), iTest, GL_STATIC_DRAW);
 
   glEnableVertexAttribArray(indexVertex);
   glEnableVertexAttribArray(indexNormale);
+  glEnableVertexAttribArray(indexColors);
 
   // une fois la config terminée
   // on désactive le dernier VBO et le VAO pour qu'ils ne soit pas accidentellement modifié
@@ -289,7 +293,7 @@ void deleteVBO()
   glDeleteBuffers(1, &VBO_sommets);
   glDeleteBuffers(1, &VBO_normales);
   glDeleteBuffers(1, &VBO_indices);
-  glDeleteBuffers(1, &VBO_UVtext);
+  glDeleteBuffers(1, &VBO_Colors);
   glDeleteBuffers(1, &VAO);
 }
 
@@ -299,7 +303,7 @@ void affichage()
 
   /* effacement de l'image avec la couleur de fond */
   /* Initialisation d'OpenGL */
-  glClearColor(119/255., 181/255., 254/255., 0.0);
+  glClearColor(119 / 255., 181 / 255., 254 / 255., 0.0);
   glClearDepth(10.0f); // 0 is near, >0 is far
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glColor3f(1.0, 1.0, 1.0);
@@ -346,11 +350,10 @@ void traceObjet()
   */
 
   // pour l'affichage
-  glBindVertexArray(VAO);                                             // on active le VAO
-  glDrawElements(GL_TRIANGLES, nbTriangle * 3, GL_UNSIGNED_INT, 0);           // on appelle la fonction dessin
-  glBindVertexArray(0);                                              // on desactive les VAO
-  glUseProgram(0);                                                   // et le pg
-
+  glBindVertexArray(VAO);                                           // on active le VAO
+  glDrawElements(GL_TRIANGLES, nbTriangle * 3, GL_UNSIGNED_INT, 0); // on appelle la fonction dessin
+  glBindVertexArray(0);                                             // on desactive les VAO
+  glUseProgram(0);                                                  // et le pg
 }
 
 void reshape(int w, int h)
@@ -428,6 +431,18 @@ void clavier(unsigned char touche, int x, int y)
     break;
   case 'g': /* Affichage en mode sommets seuls */
     nbTriangle--;
+    glutPostRedisplay();
+    break;
+  case 'j': /* Affichage en mode sommets seuls */
+    clearBuffers();
+    deleteVBO();
+    initBuffers();
+    initPoints(tSommets, tColors, N, w, h);
+    initFaces(&tIndices, N);
+    generateDiamondSquare(tSommets, N, 5, H);
+    genereVBO();
+
+    cout << "generation...\n";
     glutPostRedisplay();
     break;
 
