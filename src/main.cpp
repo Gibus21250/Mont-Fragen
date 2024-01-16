@@ -18,7 +18,7 @@
 using namespace glm;
 using namespace std;
 
-const int N = 3; // Correspond à la résolutions
+const int N = 8; // Correspond à la résolutions
 
 const int nbVertex = (pow(2, N) + 1) * (pow(2, N) + 1);
 int nbTriangle = 0;
@@ -36,13 +36,13 @@ glm::vec3 pTest[] = {
 GLuint iTest[] = {
     0, 1, 2};
 
-double w = 10; // largeur de la matrice dans le monde
-double h = 10; // longueur de la matrice dans le monde
-
-double H = 2;
+double w = 128; // largeur de la matrice dans le monde
+double h = 128; // longueur de la matrice dans le monde
+double maxHauteur = 25;
 
 void initBuffers();
 void clearBuffers();
+void afficheInfoData();
 
 // initialisations
 void genereVBO();
@@ -105,8 +105,8 @@ vec3 materialSpecularColor(1., .1, 1); // couleur du materiau
 glm::mat4 MVP;                     // justement la voilà
 glm::mat4 Model, View, Projection; // Matrices constituant MVP
 
-int screenHeight = 1000;
-int screenWidth = 1000;
+int screenHeight = 720;
+int screenWidth = 1280;
 
 // pour la texcture
 //-------------------
@@ -200,23 +200,7 @@ int main(int argc, char **argv)
   cout << "nbTriangle générée:" << nbTriangle << "\n";
   cout << "nbPoint:" << nbVertex << "\n";
 
-  /*
-    for (size_t i = 0; i < nbVertex; i++)
-    {
-      cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
-      tNormales[i] = {0, 1, 0};
-    }*/
-  cout << "----------\n";
-  for (size_t i = 0; i < nbTriangle; i++)
-  {
-    cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
-  }
-  generateDiamondSquare(tSommets, N, 5, H);
-
-  for (size_t i = 0; i < nbVertex; i++)
-  {
-    cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
-  }
+  generateDiamondSquare(tSommets, N, maxHauteur);
 
   computeNormales(tNormales, N);
 
@@ -438,27 +422,31 @@ void clavier(unsigned char touche, int x, int y)
     initBuffers();
     initPoints(tSommets, tColors, N, w, h);
     initFaces(&tIndices, N);
-    generateDiamondSquare(tSommets, N, 5, H);
+    generateDiamondSquare(tSommets, N, maxHauteur);
+    // afficheInfoData();
     genereVBO();
-
-    cout << "generation...\n\n";
-    cout << "nbTriangle générée:" << nbTriangle << "\n";
-    cout << "nbPoint:" << nbVertex << "\n";
-    cout << "----------\n";
-    for (size_t i = 0; i < nbTriangle; i++)
-    {
-      cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
-    }
-    for (size_t i = 0; i < nbVertex; i++)
-    {
-      cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
-    }
 
     glutPostRedisplay();
     break;
 
   case 'q': /*la touche 'q' permet de quitter le programme */
     exit(0);
+  }
+}
+
+void afficheInfoData()
+{
+  cout << "generation...\n\n";
+  cout << "nbTriangle générée:" << nbTriangle << "\n";
+  cout << "nbPoint:" << nbVertex << "\n";
+  cout << "----------\n";
+  for (size_t i = 0; i < nbTriangle; i++)
+  {
+    cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
+  }
+  for (size_t i = 0; i < nbVertex; i++)
+  {
+    cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
   }
 }
 
