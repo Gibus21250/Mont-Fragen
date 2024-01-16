@@ -1,5 +1,4 @@
 #!/bin/bash
-
 make mrproper
 make
 
