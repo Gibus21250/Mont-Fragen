@@ -8,29 +8,43 @@ double distance(double x1, double y1, double x2, double y2)
     return sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2));
 }
 
-void initFaces(glm::uvec3 *faces, unsigned int N)
+uint initFaces(glm::uvec3 **faces, unsigned int N)
 {
+    #define PAS 8
+    *faces = (glm::uvec3*) malloc(PAS * sizeof(glm::uvec3));
+    
+    int sizeBuff = PAS;
+
     const int matSize = 2 * N + 1;
-    int indiceFace = 0;
-    // Pour chaque points des lignes
+    uint indiceFace = 0;
+
+    // Pour chaque colonne
     for (int i = 0; i < matSize - 1; i++)
-    {
-        // Pour chaque colonne
+    {    
+        // Pour chaque lignes
         for (int j = 0; j < matSize - 1; j++)
         {
+            if((indiceFace+2) > sizeBuff)
+            {
+                *faces = (glm::uvec3*) realloc(*faces, (sizeBuff + PAS) * sizeof(glm::uvec3));
+                sizeBuff += PAS;
+            }
+
             int hg = i + matSize * j;           // Haut gauche
             int hd = i + 1 + matSize * j;       // Haut droite
             int bg = i + matSize * (j + 1);     // Bas gauche
             int bd = i + 1 + matSize * (j + 1); // Bas droite
             
-            faces[indiceFace] = {
+            (*faces)[indiceFace] = {
                 hg, bg, hd};
             indiceFace++;
-            faces[indiceFace] = {
+            (*faces)[indiceFace] = {
                 hd, bg, bd};
             indiceFace++;
         }
     }
+
+    return indiceFace;
 }
 
 void initPoints(glm::vec3 *points, unsigned int N, float w, float h)
@@ -59,10 +73,10 @@ void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H)
     srand(time(NULL));
 
     // 4 corners initialized
-    points[0].y = (rand() / RAND_MAX) * heightMax;
-    points[(2 * N + 1)].y = (rand() / RAND_MAX) * heightMax;
-    points[2 * (2 * N + 1) * N].y = (rand() / RAND_MAX) * heightMax;
-    points[2 * (2 * N + 1) * N + 2 * N].y = (rand() / RAND_MAX) * heightMax;
+    points[0].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
+    points[(2 * N + 1)].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
+    points[2 * (2 * N + 1) * N].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
+    points[2 * (2 * N + 1) * N + 2 * N].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
 
     int chunkSize = matSize - 1; // taille du chunk à traiter
 
@@ -86,12 +100,12 @@ void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H)
                     points[x + half][y + half].y*/
 
                 // TODO ajuster si necessaire
-                double dist2 = glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y - half) * (2 * N + 1)]) 
-                + glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y - half) * (2 * N + 1)]) 
-                + glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y + half) * (2 * N + 1)]) 
-                + glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y + half) * (2 * N + 1)]);
+                double dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y - half) * (2 * N + 1)]))
+                + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y - half) * (2 * N + 1)])) 
+                + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y + half) * (2 * N + 1)])) 
+                + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y + half) * (2 * N + 1)]));
 
-                points[x + y * (2 * N + 1)].y = avg + delta(dist2, H);
+                points[x + y * (2 * N + 1)].y = avg + delta(dist, H);
             }
         }
 
@@ -107,35 +121,35 @@ void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H)
             {
                 double sum = 0;
                 int n = 0;
-                double dist2 = 0;
+                double dist = 0;
 
                 if (x >= half)
                 {
                     sum += points[x - half + y * (2 * N + 1)].y;
                     n++;
-                    dist2 = glm::dot(points[x + y * (2 * N + 1)], points[x - half + y * (2 * N + 1)]);
+                    dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + y * (2 * N + 1)]));
                 }
                 if (x + half < matSize)
                 {
                     sum += points[x + half + y * (2 * N + 1)].y;
                     n++;
-                    dist2 = glm::dot(points[x + y * (2 * N + 1)], points[x + half + y * (2 * N + 1)]);
+                    dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + y * (2 * N + 1)]));
                 }
                 if (y >= half)
                 {
                     sum += points[x + (y - half) * (2 * N + 1)].y;
                     n++;
-                    dist2 = glm::dot(points[x + y * (2 * N + 1)], points[x + (y - half) * (2 * N + 1)]);
+                    dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + (y - half) * (2 * N + 1)]));
                 }
                 if (y + half > matSize)
                 {
                     sum += points[x + (y + half) * (2 * N + 1)].y;
                     n++;
-                    dist2 = glm::dot(points[x + y * (2 * N + 1)], points[x + (y + half) * (2 * N + 1)]);
+                    dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + (y + half) * (2 * N + 1)]));
                 }
 
                 double avg = sum / n;
-                points[x + y * (2 * N + 1)].y = avg + delta(dist2, H);
+                points[x + y * (2 * N + 1)].y = avg + delta(dist, H);
             }
         }
         chunkSize = half;
@@ -144,5 +158,10 @@ void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H)
 
 double delta(double distance, double H)
 {
-    return (2 * (rand() / RAND_MAX) - 1) * distance * pow(2, -H);
+    return (2 * (rand() / RAND_MAX + 1.0) - 1) * distance * pow(2, -H);
+}
+
+void computeNormales(glm::vec3 *normales, uint N)
+{
+
 }
