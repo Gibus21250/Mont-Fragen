@@ -8,7 +8,6 @@ uniform float l_attenuation;
 
 uniform vec3 cameraPosition;
 
-//texture
 uniform mat4 MODEL;
 
 //in
@@ -19,14 +18,20 @@ in vec3 fragColor;
 out vec4 finalColor;
 
 void main() {
-
+    vec3 directLight = vec3(0, -1/sqrt(2), -1/sqrt(2));
     vec3 nvNormal = normalize(vNormal);
+
     nvNormal = transpose(inverse(mat3 (MODEL))) * nvNormal;
     nvNormal = normalize(nvNormal);
+    
+    vec3 toLight = -directLight;
+
     //Recupérer vecteur en direction de la lampe
-    vec3 toLight = l_position - fragPosition.xyz;
+    /*
+    vec3 toLight = directLight - fragPosition.xyz;
     float dist2 = dot(toLight, toLight);
     toLight = normalize(toLight);
+    */
 
     vec3 toCamera = cameraPosition.xyz - fragPosition.xyz;
     toCamera = normalize(toCamera);
