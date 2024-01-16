@@ -72,7 +72,6 @@ void initPoints(glm::vec3 *points, glm::vec3 *colors, unsigned int N, float w, f
 // diamondSquare algorith
 void generateDiamondSquare(glm::vec3 *points, uint N, double heightMax)
 {
-
     int matSize = pow(2, N) + 1;
     // donne le dernier index d'une ligne
     int twoPowN = pow(2, N);
@@ -170,6 +169,42 @@ double delta(double facteur, double H)
     return randomFrom(-1, 1) * facteur * pow(2, -H);
 }
 
-void computeNormales(glm::vec3 *normales, uint N)
+void computeNormales(glm::vec3 *normales, glm::vec3 *points, glm::uvec3 *triangles, uint N, uint nbTriangle)
 {
+    uint longMat = (uint) pow(2, N) + 1;
+    uint nbTotalPoints = longMat * longMat;
+
+    //Initialisation d'une structure accumulant les normales de chaque points
+    struct NormalesInfo {
+        glm::vec3 accumulatedNormale;
+        uint nb;
+    };
+
+    NormalesInfo* infos = new NormalesInfo[nbTotalPoints];
+
+    //Pour chaque triangle, on accumule la normal de la face aux points de ce triangle
+    for (size_t i = 0; i < nbTriangle; i++)
+    {
+        //Calcule de la normale de la face
+        glm::vec3 ab = points[triangles[i].y] - points[triangles[i].x];
+        glm::vec3 ac = points[triangles[i].z] - points[triangles[i].x];
+
+        glm::vec3 normaleFace = glm::cross(ab, ac);
+
+        normaleFace = glm::normalize(normaleFace);
+
+        infos[triangles[i].x].accumulatedNormale += normaleFace;
+        infos[triangles[i].x].nb++;
+
+        infos[triangles[i].y].accumulatedNormale += normaleFace;
+        infos[triangles[i].y].nb++;
+
+        infos[triangles[i].z].accumulatedNormale += normaleFace;
+        infos[triangles[i].z].nb++;
+    }
+
+    for (size_t i = 0; i < nbTotalPoints; i++)
+    {
+        normales[i] = infos[i].accumulatedNormale / (float) infos[i].nb;
+    }
 }

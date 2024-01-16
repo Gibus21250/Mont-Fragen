@@ -197,12 +197,10 @@ int main(int argc, char **argv)
   initOpenGL();
   initPoints(tSommets, tColors, N, w, h);
   nbTriangle = initFaces(&tIndices, N);
-  cout << "nbTriangle générée:" << nbTriangle << "\n";
-  cout << "nbPoint:" << nbVertex << "\n";
-
+  
   generateDiamondSquare(tSommets, N, maxHauteur);
 
-  computeNormales(tNormales, N);
+  computeNormales(tNormales, tSommets, tIndices, N, nbTriangle);
 
   // construction des VBO a partir des tableaux du cube deja construit
   genereVBO();
@@ -423,6 +421,7 @@ void clavier(unsigned char touche, int x, int y)
     initPoints(tSommets, tColors, N, w, h);
     initFaces(&tIndices, N);
     generateDiamondSquare(tSommets, N, maxHauteur);
+    computeNormales(tNormales, tSommets, tIndices, N, nbTriangle);
     // afficheInfoData();
     genereVBO();
 
