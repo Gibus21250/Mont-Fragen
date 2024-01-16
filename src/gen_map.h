@@ -1,42 +1,13 @@
 #ifndef GEN_MAP_H
 #define GEN_MAP_H
 
-#include <iostream>
-#include <vector>
-#include <random>
-#include <GL/glut.h>
-
-using namespace std;
-
-//size of the map
-extern double w;
-extern double h;
-
-//number of iterations
-extern int N;
-//matrix size
-extern int matSize;
-//controls fractal dimension of the mountain
-extern double H;
-
-extern vector<vector<double>> height_map;
-extern vector<GLdouble> points;
-extern vector<GLint> indexFaces;
+#include "glm/glm.hpp"
 
 double distance(double x1, double y1, double x2, double y2);
 
-//getters to access x, y, z coordinates of the point in the i,j coordinates of the height_map
-GLdouble getX(int i, int j);
-GLdouble getY(int i, int j);
-GLdouble getZ(int i, int j);
-
-//returns the index of the x component, +1 to have y and +2 to have z
-int getPointIndexFromHeightMap(int i, int j);
-
-//Generate x and z coordinates of the points (y is altitude determined in genMap)
-void genPoints();
-void genFaces();
-
-void genMap();
+void initPoints(glm::vec3 *points, unsigned int N, float w, float h);
+void initFaces(glm::uvec3 *faces, unsigned int N);
+void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H);
+double delta(double distance, double H);
 
 #endif  // GEN_MAP_H
