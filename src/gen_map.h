@@ -5,8 +5,9 @@
 
 void initPoints(glm::vec3 *points, glm::vec3 *colors, unsigned int N, float w, float h);
 uint initFaces(glm::uvec3 **faces, unsigned int N);
-void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H);
+void generateDiamondSquare(glm::vec3 *points, uint N, double heightMax);
 double delta(double distance, double H);
+double randomFrom(double a, double b);
 void computeNormales(glm::vec3 *normales, uint N);
 
 #endif // GEN_MAP_H
