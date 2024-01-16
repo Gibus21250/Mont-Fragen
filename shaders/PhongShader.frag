@@ -36,8 +36,8 @@ void main() {
     
     
     vec3 colorA = l_ambientCoefficient * fragColor;
-    vec3 colorD = max(0, dot(nvNormal, toLight)) * l_intensity * fragColor * 1/dist2;
-    vec3 colorS = pow(max(0, dot(toCamera, rtolight)), 5) * fragColor * 1/dist2;
+    vec3 colorD = max(0, dot(nvNormal, toLight)) * l_intensity * fragColor;
+    vec3 colorS = pow(max(0, dot(toCamera, rtolight)), 5) * fragColor;
 
-    finalColor = vec4(colorA, 1) + vec4(colorD, 1) + vec4(colorS, 1);
+    finalColor = vec4(colorA, 1) + vec4(colorD, 1);
 }
