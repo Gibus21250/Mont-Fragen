@@ -1,200 +1,466 @@
 #include <iostream>
-#include <GL/glut.h>
-#include <vector>
-#include <random>
+#include <sstream>
+#include <iomanip>
+#include <cstdlib>
+#include <stdlib.h>
+#include <stdio.h>
+#include <GL/glew.h>
+#include <GL/freeglut.h>
+#include <math.h>
+#include "shader.hpp"
+#include <string.h>
 
-#include "vector3.h"
-#include "vector2.h"
 #include "gen_map.h"
 
+// Include GLM
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+using namespace glm;
 using namespace std;
 
-//global variables OpenGL
-int WINDOW, WIDTH, HEIGHT;
+const int N = 1; //Correspond à la résolutions
 
+const int nbVertex = (2 * N + 1) * (2 * N + 1);
+const int nbFace = (N + 1) * (N + 1) * 2;
+
+glm::vec3 *tSommets;
+glm::vec3 *tNormales;
+glm::uvec3 *tIndices;
+
+glm::vec3 pTest[] = {
+    {-25, 0, 25},
+    {-25, 0, 0},
+    {0, 0, 25}};
+
+GLuint iTest[] = {
+    0, 1, 2};
+
+double w = 10; // largeur de la matrice dans le monde
+double h = 10; // longueur de la matrice dans le monde
+
+double H = 150;
+
+void initBuffers();
+void clearBuffers();
+
+// initialisations
+void genereVBO();
+void deleteVBO();
+void traceObjet();
+
+
+// fonctions de rappel de glut
+void affichage();
+void clavier(unsigned char, int, int);
+void mouse(int, int, int, int);
+void mouseMotion(int, int);
+void reshape(int, int);
+
+// variables globales pour OpenGL
 bool mouseLeftDown;
 bool mouseRightDown;
 bool mouseMiddleDown;
 float mouseX, mouseY;
-float cameraAngleX, cameraAngleY;
-float cameraDistance = 0;
+float cameraAngleX;
+float cameraAngleY;
+float cameraDistance = 0.;
 
-void traceLine(Vector3& v1, Vector3& v2) {
-	glBegin(GL_LINES);
-    	glVertex3d(v1.x, v1.y, v1.z);
-    	glVertex3d(v2.x, v2.y, v2.z);
-    glEnd();
+// variables Handle d'opengl
+//--------------------------
+GLuint programID;                                                     // handle pour le shader
+GLuint MatrixIDMVP, MatrixIDView, MatrixIDModel, MatrixIDPerspective; // handle pour la matrice MVP
+GLuint VBO_sommets, VBO_normales, VBO_indices, VBO_UVtext, VAO;
+GLuint locCameraPosition;
+GLuint locmaterialShininess;
+GLuint locmaterialSpecularColor;
+
+struct LightInfoGPU
+{
+  GLuint locLightPosition;
+  GLuint locLightIntensities;
+  GLuint locLightAttenuation;
+  GLuint locLightAmbientCoefficient;
+} LightInfoGPU;
+
+struct LightInfoCPU
+{
+  glm::vec3 position = glm::vec3(1., 1, 1);
+  glm::vec3 intensity = vec3(1., 1., 1.);
+  GLfloat attenuation = 1;
+  GLfloat ambientCoeff = .5;
+} LightInfoCPU;
+
+// location des VBO
+//------------------
+GLuint indexVertex = 0, indexNormale = 1;
+
+// variable pour paramétrage eclairage
+//--------------------------------------
+vec3 cameraPosition(1, 1, 10.);
+// le matériau
+//---------------
+GLfloat materialShininess = 3.;
+vec3 materialSpecularColor(1., .1, 1); // couleur du materiau
+
+glm::mat4 MVP;                     // justement la voilà
+glm::mat4 Model, View, Projection; // Matrices constituant MVP
+
+int screenHeight = 1000;
+int screenWidth = 1000;
+
+// pour la texcture
+//-------------------
+GLuint image;
+GLuint bufTexture, bufNormalMap;
+GLuint locationTexture, locationNormalMap;
+
+void initBuffers()
+{
+  cout << nbVertex * sizeof(glm::vec3) << "\n";
+  tSommets = (glm::vec3*) malloc(nbVertex * sizeof(glm::vec3));
+  tNormales = (glm::vec3*) malloc(nbVertex * sizeof(glm::vec3));
+  tIndices = (glm::uvec3*) malloc(nbFace * sizeof(glm::uvec3));
 }
 
-void drawPoints(vector<GLdouble>& points, const int size) {
-	for(int i = 0; i < size; i++) {
-		for(int j = 0; j < size; j++) {
-            int index = 3 * (i * matSize + j);
-			glColor3f(0.0, 1.0, 0.0);
-			glPointSize(3.0);
-			glBegin(GL_POINTS);
-				glVertex3d(points[index], points[index+1], points[index+2]);
-			glEnd();
-		}
-	}
+void clearBuffers()
+{
+  free(tSommets);
+  free(tNormales);
+  free(tIndices);
+}
+//----------------------------------------
+void initOpenGL(void)
+//----------------------------------------
+{
+  //glCullFace(GL_BACK);    // on spécifie queil faut éliminer les face arriere
+  //glEnable(GL_CULL_FACE); // on active l'élimination des faces qui par défaut n'est pas active
+  glEnable(GL_DEPTH_TEST);
+  // le shader
+  programID = LoadShaders("shaders/PhongShader.vert", "shaders/PhongShader.frag");
+
+  // Get  handles for our matrix transformations "MVP" VIEW  MODELuniform
+  MatrixIDMVP = glGetUniformLocation(programID, "MVP");
+  MatrixIDView = glGetUniformLocation(programID, "VIEW");
+  MatrixIDModel = glGetUniformLocation(programID, "MODEL");
+  // MatrixIDPerspective = glGetUniformLocation(programID, "PERSPECTIVE");
+
+  // Projection matrix : 65 Field of View, 1:1 ratio, display range : 1 unit <-> 1000 units
+  // ATTENTIOn l'angle est donné en radians si f GLM_FORCE_RADIANS est défini sinon en degré
+  Projection = glm::perspective(glm::radians(90.f), 1.0f, 1.0f, 1000.0f);
+
+  /* on recupere l'ID */
+  locCameraPosition = glGetUniformLocation(programID, "cameraPosition");
+
+  LightInfoGPU.locLightAmbientCoefficient = glGetUniformLocation(programID, "l_ambientCoefficient");
+  LightInfoGPU.locLightPosition = glGetUniformLocation(programID, "l_position");
+  LightInfoGPU.locLightIntensities = glGetUniformLocation(programID, "l_intensity"); // a.k.a the color of the light
+  LightInfoGPU.locLightAttenuation = glGetUniformLocation(programID, "l_attenuation");
+  /*
+  locmaterialShininess = glGetUniformLocation(programID, "materialShininess");
+  locmaterialSpecularColor = glGetUniformLocation(programID, "materialSpecularColor");
+
+
+  */
+}
+//----------------------------------------
+int main(int argc, char **argv)
+//----------------------------------------
+{
+
+  /* initialisation de glut et creation
+     de la fenetre */
+
+  glutInit(&argc, argv);
+  glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
+  glutInitWindowPosition(200, 200);
+  glutInitWindowSize(screenWidth, screenHeight);
+  glutCreateWindow("Mont Fragen");
+
+  // Initialize GLEW
+  if (glewInit() != GLEW_OK)
+  {
+    fprintf(stderr, "Failed to initialize GLEW\n");
+    return -1;
+  }
+
+  // info version GLSL
+  std::cout << "***** Info GPU *****" << std::endl;
+  std::cout << "Fabricant : " << glGetString(GL_VENDOR) << std::endl;
+  std::cout << "Carte graphique: " << glGetString(GL_RENDERER) << std::endl;
+  std::cout << "Version : " << glGetString(GL_VERSION) << std::endl;
+  std::cout << "Version GLSL : " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+
+  initBuffers();
+
+  initOpenGL();
+  initPoints(tSommets, N, w, h);
+  initFaces(tIndices, N);
+
+  for (size_t i = 0; i < nbVertex; i++)
+  {
+    cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
+    tNormales[i] = {0, 1, 0};
+  }
+  cout << "----------\n";
+  for (size_t i = 0; i < nbFace; i++)
+  {
+    cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
+  }
+  
+  // construction des VBO a partir des tableaux du cube deja construit
+  genereVBO();
+
+  /* enregistrement des fonctions de rappel */
+  glutDisplayFunc(affichage);
+  glutKeyboardFunc(clavier);
+  glutReshapeFunc(reshape);
+  glutMouseFunc(mouse);
+  glutMotionFunc(mouseMotion);
+
+  /* Entree dans la boucle principale glut */
+  glutMainLoop();
+
+  clearBuffers();
+  glDeleteProgram(programID);
+  deleteVBO();
+  
+  return 0;
 }
 
-void drawWiredScene(vector<vector<Vector3&>>& points, const int size) {
-	for(int i = 0; i < size; i++) {
-		for(int j = 0; j < size; j++) {
-			
-		}
-	}
+void genereVBO()
+{
+  glGenBuffers(1, &VAO);
+  glBindVertexArray(VAO); // ici on bind le VAO , c'est lui qui recupèrera les configurations des VBO glVertexAttribPointer , glEnableVertexAttribArray...
+
+  if (glIsBuffer(VBO_sommets) == GL_TRUE)
+    glDeleteBuffers(1, &VBO_sommets);
+  glGenBuffers(1, &VBO_sommets);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO_sommets);
+  cout << "taille sommets: " << nbVertex * sizeof(glm::vec3) << "\n";
+  glBufferData(GL_ARRAY_BUFFER, nbVertex * sizeof(glm::vec3), tSommets, GL_STATIC_DRAW);
+  //glBufferData(GL_ARRAY_BUFFER, sizeof(pTest), pTest, GL_STATIC_DRAW);
+  glVertexAttribPointer(indexVertex, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+
+  if (glIsBuffer(VBO_normales) == GL_TRUE)
+    glDeleteBuffers(1, &VBO_normales);
+  glGenBuffers(1, &VBO_normales);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO_normales);
+  cout << "taille normales: " << nbVertex * sizeof(glm::vec3) << "\n";
+  glBufferData(GL_ARRAY_BUFFER, nbVertex * sizeof(glm::vec3), tNormales, GL_STATIC_DRAW);
+  glVertexAttribPointer(indexNormale, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+
+  if (glIsBuffer(VBO_indices) == GL_TRUE)
+    glDeleteBuffers(1, &VBO_indices);
+  glGenBuffers(1, &VBO_indices); // ATTENTIOn IBO doit etre un GL_ELEMENT_ARRAY_BUFFER
+  cout << "taille indices: " << sizeof(tIndices) * sizeof(glm::uvec3) << "\n";
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBO_indices);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, nbVertex * sizeof(glm::uvec3), tIndices, GL_STATIC_DRAW);
+  //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(iTest), iTest, GL_STATIC_DRAW);
+
+
+  glEnableVertexAttribArray(indexVertex);
+  glEnableVertexAttribArray(indexNormale);
+
+  // une fois la config terminée
+  // on désactive le dernier VBO et le VAO pour qu'ils ne soit pas accidentellement modifié
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
 }
 
-void initOpenGL() {
-	// light
-    glClearColor(.5, .5, .5, 0.0);
+void deleteVBO()
+{
+  glDeleteBuffers(1, &VBO_sommets);
+  glDeleteBuffers(1, &VBO_normales);
+  glDeleteBuffers(1, &VBO_indices);
+  glDeleteBuffers(1, &VBO_UVtext);
+  glDeleteBuffers(1, &VAO);
+}
 
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    GLfloat l_pos[] = {3., 3.5, 3.0, 1.0};
-    glLightfv(GL_LIGHT0, GL_POSITION, l_pos);
+/* fonction d'affichage */
+void affichage()
+{
 
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, l_pos);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, l_pos);
+  /* effacement de l'image avec la couleur de fond */
+  /* Initialisation d'OpenGL */
+  glClearColor(0.0, 0.0, 0.0, 0.0);
+  glClearDepth(10.0f); // 0 is near, >0 is far
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glColor3f(1.0, 1.0, 1.0);
+  glPointSize(2.0);
 
-    // glDepthFunc(GL_LESS);
-    // glEnable(GL_DEPTH_TEST);
-    glEnable(GL_COLOR_MATERIAL);
+  View = glm::lookAt(cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+  Model = glm::mat4(1.0f);
+  Model = glm::translate(Model, glm::vec3(0, 0, cameraDistance));
+  Model = glm::rotate(Model, glm::radians(cameraAngleX), glm::vec3(1, 0, 0));
+  Model = glm::rotate(Model, glm::radians(cameraAngleY), glm::vec3(0, 1, 0));
+  // Model = glm::scale(Model,glm::vec3(.8, .8, .8));
+  MVP = Projection * View * Model;
+  traceObjet(); // trace VBO avec ou sans shader
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(45.0f, (GLfloat)200 / (GLfloat)200, 0.1f, 100.0f);
-    glMatrixMode(GL_MODELVIEW);
-    // glLoadIdentity();
-    // glScalef(.7,.7,.7);
-    gluLookAt(0., 0., 4., 0., 0., 0., 0., 1., 0.);
-    // glTranslatef(0.0,0.0,-5.0);
+  /* on force l'affichage du resultat */
+  glutPostRedisplay();
+  glutSwapBuffers();
+}
 
-    //generate map geometry
-    genPoints();
-	genMap();
+//-------------------------------------
+// Trace le tore 2 via le VAO
+void traceObjet()
+{
+  // Use  shader & MVP matrix   MVP = Projection * View * Model;
+  glUseProgram(programID);
+
+  // on envoie les données necessaires aux shaders */
+  glUniformMatrix4fv(MatrixIDMVP, 1, GL_FALSE, &MVP[0][0]);
+  glUniformMatrix4fv(MatrixIDView, 1, GL_FALSE, &View[0][0]);
+  glUniformMatrix4fv(MatrixIDModel, 1, GL_FALSE, &Model[0][0]);
+  // glUniformMatrix4fv(MatrixIDPerspective, 1, GL_FALSE, &Projection[0][0]);
+
+  glUniform3f(locCameraPosition, cameraPosition.x, cameraPosition.y, cameraPosition.z);
+
+  glUniform1f(LightInfoGPU.locLightAmbientCoefficient, LightInfoCPU.ambientCoeff);
+  glUniform3f(LightInfoGPU.locLightPosition, LightInfoCPU.position.x, LightInfoCPU.position.y, LightInfoCPU.position.z);
+  glUniform3f(LightInfoGPU.locLightIntensities, LightInfoCPU.intensity.x, LightInfoCPU.intensity.y, LightInfoCPU.intensity.z);
+  glUniform1f(LightInfoGPU.locLightAttenuation, LightInfoCPU.attenuation);
+  /*
+   glUniform1f(locmaterialShininess,materialShininess);
+   glUniform3f(locmaterialSpecularColor,materialSpecularColor.x,materialSpecularColor.y,materialSpecularColor.z);
+
+
+  */
+
+  // pour l'affichage
+  glBindVertexArray(VAO);                                             // on active le VAO
+  glDrawElements(GL_TRIANGLES, nbFace, GL_UNSIGNED_INT, 0);           // on appelle la fonction dessin
+  glBindVertexArray(0);                                              // on desactive les VAO
+  glUseProgram(0);                                                   // et le pg
 
 }
 
-void display_basis() {
-    //x axis
-	glBegin(GL_LINES);
-    glColor3d(1., 0., 0.);
-    glVertex3d(0., 0., 0.);
-    glVertex3d(1., 0., 0.);
-    glEnd();
+void reshape(int w, int h)
+{
+  // set viewport to be the entire window
+  glViewport(0, 0, (GLsizei)w, (GLsizei)h); // ATTENTION GLsizei important - indique qu'il faut convertir en entier non négatif
 
-    //y axis
-    glBegin(GL_LINES);
-    glColor3d(0., 1., 0.);
-    glVertex3d(0., 0., 0.);
-    glVertex3d(0., 1., 0.);
-    glEnd();
+  // set perspective viewing frustum
+  float aspectRatio = (float)w / h;
 
-    //z axis
-    glBegin(GL_LINES);
-    glColor3d(0., 0., 1.);
-    glVertex3d(0., 0., 0.);
-    glVertex3d(0., 0., 1.);
-    glEnd();
+  Projection = glm::perspective(glm::radians(60.0f), (float)(w) / (float)h, 1.0f, 1000.0f);
 }
 
-void main_display(void) {
-    glMatrixMode(GL_MODELVIEW);
-    /* clearing background */
-    glClear(GL_COLOR_BUFFER_BIT);
-    glPushMatrix();
-    glTranslatef(0, 0, cameraDistance);
-    glRotatef(cameraAngleX, 1., 0., 0.);
-    glRotatef(cameraAngleY, 0., 1., 0.);
-
-	display_basis();
-
-	drawPoints(points, matSize);
-
-    glPopMatrix();
-	glFlush();
-}
-
-void keyboard(unsigned char key, int x, int y) {
-
-}
-
-void mouse(int button, int state, int x, int y) {
-	mouseX = x;
-    mouseY = y;
-
-    if(button == GLUT_LEFT_BUTTON)
-    {
-        if(state == GLUT_DOWN)
-        {
-            mouseLeftDown = true;
-        }
-        else if(state == GLUT_UP)
-            mouseLeftDown = false;
-    }
-
-    else if(button == GLUT_RIGHT_BUTTON)
-    {
-        if(state == GLUT_DOWN)
-        {
-            mouseRightDown = true;
-        }
-        else if(state == GLUT_UP)
-            mouseRightDown = false;
-    }
-
-    else if(button == GLUT_MIDDLE_BUTTON)
-    {
-        if(state == GLUT_DOWN)
-        {
-            mouseMiddleDown = true;
-        }
-        else if(state == GLUT_UP)
-            mouseMiddleDown = false;
-    }
-}
-
-void motion(int x, int y) {
-	if(mouseLeftDown)
-    {
-        cameraAngleY += (x - mouseX);
-        cameraAngleX += (y - mouseY);
-        mouseX = x;
-        mouseY = y;
-    }
-    if(mouseRightDown)
-    {
-        cameraDistance += (y - mouseY) * 0.2f;
-        mouseY = y;
-    }
-
+void clavier(unsigned char touche, int x, int y)
+{
+  switch (touche)
+  {
+  case 'f': /* affichage du carre plein */
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glutPostRedisplay();
+    break;
+  case 'e': /* affichage en mode fil de fer */
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glutPostRedisplay();
+    break;
+  case 'v': /* Affichage en mode sommets seuls */
+    glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+    glutPostRedisplay();
+    break;
+  case 's': /* Affichage en mode sommets seuls */
+    materialShininess -= .5;
+    glutPostRedisplay();
+    break;
+  case 'S': /* Affichage en mode sommets seuls */
+    materialShininess += .5;
+    glutPostRedisplay();
+    break;
+  case 'x': /* Affichage en mode sommets seuls */
+    LightInfoCPU.position.x -= .2;
+    glutPostRedisplay();
+    break;
+  case 'X': /* Affichage en mode sommets seuls */
+    LightInfoCPU.position.x += .2;
+    glutPostRedisplay();
+    break;
+  case 'y': /* Affichage en mode sommets seuls */
+    LightInfoCPU.position.y -= .2;
+    glutPostRedisplay();
+    break;
+  case 'Y': /* Affichage en mode sommets seuls */
+    LightInfoCPU.position.y += .2;
+    glutPostRedisplay();
+    break;
+  case 'z': /* Affichage en mode sommets seuls */
+    LightInfoCPU.position.z -= .2;
+    glutPostRedisplay();
+    break;
+  case 'Z': /* Affichage en mode sommets seuls */
+    LightInfoCPU.position.z += .2;
+    glutPostRedisplay();
+    break;
+  case 'a': /* Affichage en mode sommets seuls */
+    LightInfoCPU.ambientCoeff -= .1;
+    cout << LightInfoCPU.ambientCoeff << "\n";
+    glutPostRedisplay();
+    break;
+  case 'A': /* Affichage en mode sommets seuls */
+    LightInfoCPU.ambientCoeff += .1;
+    cout << LightInfoCPU.ambientCoeff << "\n";
+    glutPostRedisplay();
+    break;
+
+  case 'q': /*la touche 'q' permet de quitter le programme */
+    exit(0);
+  }
 }
 
-int main(int argc, char** argv) {
-	 /* glut init and window creation */
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowPosition(200, 200);
-    glutInitWindowSize(600, 600);
+void mouse(int button, int state, int x, int y)
+{
+  mouseX = x;
+  mouseY = y;
 
-	WIDTH = glutGet(GLUT_WINDOW_WIDTH);
-    HEIGHT = glutGet(GLUT_WINDOW_HEIGHT);
+  if (button == GLUT_LEFT_BUTTON)
+  {
+    if (state == GLUT_DOWN)
+    {
+      mouseLeftDown = true;
+    }
+    else if (state == GLUT_UP)
+      mouseLeftDown = false;
+  }
 
-    WINDOW = glutCreateWindow("Fragen Project");
+  else if (button == GLUT_RIGHT_BUTTON)
+  {
+    if (state == GLUT_DOWN)
+    {
+      mouseRightDown = true;
+    }
+    else if (state == GLUT_UP)
+      mouseRightDown = false;
+  }
 
-    glutDisplayFunc(main_display);
-    glutKeyboardFunc(keyboard);
-    glutMouseFunc(mouse);
-    glutMotionFunc(motion);
+  else if (button == GLUT_MIDDLE_BUTTON)
+  {
+    if (state == GLUT_DOWN)
+    {
+      mouseMiddleDown = true;
+    }
+    else if (state == GLUT_UP)
+      mouseMiddleDown = false;
+  }
+}
 
-    initOpenGL();
+void mouseMotion(int x, int y)
+{
+  if (mouseLeftDown)
+  {
+    cameraAngleY += (x - mouseX);
+    cameraAngleX += (y - mouseY);
+    mouseX = x;
+    mouseY = y;
+  }
+  if (mouseRightDown)
+  {
+    cameraDistance += (y - mouseY) * 0.2f;
+    mouseY = y;
+  }
 
-    /* Enter glut's main loop */
-    glutMainLoop();
-
-	return 0;
+  glutPostRedisplay();
 }
