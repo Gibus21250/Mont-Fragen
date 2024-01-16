@@ -20,6 +20,10 @@ using namespace std;
 
 const int N = 8; // Correspond à la résolutions
 
+double w = 128; // largeur de la matrice dans le monde
+double h = 128; // longueur de la matrice dans le monde
+double maxHauteur = 25;
+
 const int nbVertex = (pow(2, N) + 1) * (pow(2, N) + 1);
 int nbTriangle = 0;
 
@@ -28,17 +32,21 @@ glm::vec3 *tNormales;
 glm::uvec3 *tIndices;
 glm::vec3 *tColors;
 
-glm::vec3 pTest[] = {
-    {-25, 0, 25},
-    {-25, 0, 0},
-    {0, 0, 25}};
+glm::vec3 tEauSommets[] = {
+    {-w/2, 0, -h/2},
+    {-w/2, 0, h/2},
+    {w/2, 0, -h/2},
+    {w/2, 0, h/2}};
 
-GLuint iTest[] = {
-    0, 1, 2};
+glm::uvec3 tEauIndices[] = {
+    {0, 1, 2},
+    {2, 1, 3}};
 
-double w = 128; // largeur de la matrice dans le monde
-double h = 128; // longueur de la matrice dans le monde
-double maxHauteur = 25;
+glm::vec3 tEauNormales[] = {
+    {0, 1, 0},
+    {0, 1, 0},
+    {0, 1, 0},
+    {0, 1, 0}};
 
 void initBuffers();
 void clearBuffers();
@@ -47,7 +55,8 @@ void afficheInfoData();
 // initialisations
 void genereVBO();
 void deleteVBO();
-void traceObjet();
+void traceMontagne();
+void traceEau();
 
 // fonctions de rappel de glut
 void affichage();
@@ -67,12 +76,18 @@ float cameraDistance = 0.;
 
 // variables Handle d'opengl
 //--------------------------
-GLuint programID;                                                     // handle pour le shader
+GLuint montagneProg;
 GLuint MatrixIDMVP, MatrixIDView, MatrixIDModel, MatrixIDPerspective; // handle pour la matrice MVP
-GLuint VBO_sommets, VBO_normales, VBO_Colors, VBO_indices, VAO;
+GLuint VBO_sommets, VBO_normales, VBO_Colors, VBO_indices, VAO_Montagne;
+
 GLuint locCameraPosition;
 GLuint locmaterialShininess;
 GLuint locmaterialSpecularColor;
+
+GLuint eauProg;
+GLuint MatrixIDMVP_eau, MatrixIDModel_eau, Hauteur_eau_uniform;
+GLuint VBO_sommets_eau, VBO_normales_eau, VBO_indices_eau, VAO_Eau;
+GLfloat Hauteur_eau = 0;
 
 struct LightInfoGPU
 {
@@ -93,6 +108,7 @@ struct LightInfoCPU
 // location des VBO
 //------------------
 GLuint indexVertex = 0, indexNormale = 1, indexColors = 2;
+GLuint indexVertexEau = 0, indexNormaleEau = 1;
 
 // variable pour paramétrage eclairage
 //--------------------------------------
@@ -116,11 +132,9 @@ GLuint locationTexture, locationNormalMap;
 
 void initBuffers()
 {
-  cout << nbVertex * sizeof(glm::vec3) << "\n";
   tSommets = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
   tColors = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
   tNormales = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
-  // tIndices = (glm::uvec3*) malloc(nbFace * sizeof(glm::uvec3));
 }
 
 void clearBuffers()
@@ -137,13 +151,15 @@ void initOpenGL(void)
   glCullFace(GL_BACK);    // on spécifie queil faut éliminer les face arriere
   glEnable(GL_CULL_FACE); // on active l'élimination des faces qui par défaut n'est pas active
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   // le shader
-  programID = LoadShaders("shaders/PhongShader.vert", "shaders/PhongShader.frag");
+  montagneProg = LoadShaders("shaders/PhongShader.vert", "shaders/PhongShader.frag");
 
   // Get  handles for our matrix transformations "MVP" VIEW  MODELuniform
-  MatrixIDMVP = glGetUniformLocation(programID, "MVP");
-  MatrixIDView = glGetUniformLocation(programID, "VIEW");
-  MatrixIDModel = glGetUniformLocation(programID, "MODEL");
+  MatrixIDMVP = glGetUniformLocation(montagneProg, "MVP");
+  MatrixIDView = glGetUniformLocation(montagneProg, "VIEW");
+  MatrixIDModel = glGetUniformLocation(montagneProg, "MODEL");
   // MatrixIDPerspective = glGetUniformLocation(programID, "PERSPECTIVE");
 
   // Projection matrix : 65 Field of View, 1:1 ratio, display range : 1 unit <-> 1000 units
@@ -151,18 +167,19 @@ void initOpenGL(void)
   Projection = glm::perspective(glm::radians(90.f), 1.0f, 1.0f, 1000.0f);
 
   /* on recupere l'ID */
-  locCameraPosition = glGetUniformLocation(programID, "cameraPosition");
+  locCameraPosition = glGetUniformLocation(montagneProg, "cameraPosition");
 
-  LightInfoGPU.locLightAmbientCoefficient = glGetUniformLocation(programID, "l_ambientCoefficient");
-  LightInfoGPU.locLightPosition = glGetUniformLocation(programID, "l_position");
-  LightInfoGPU.locLightIntensities = glGetUniformLocation(programID, "l_intensity"); // a.k.a the color of the light
-  LightInfoGPU.locLightAttenuation = glGetUniformLocation(programID, "l_attenuation");
-  /*
-  locmaterialShininess = glGetUniformLocation(programID, "materialShininess");
-  locmaterialSpecularColor = glGetUniformLocation(programID, "materialSpecularColor");
+  LightInfoGPU.locLightAmbientCoefficient = glGetUniformLocation(montagneProg, "l_ambientCoefficient");
+  LightInfoGPU.locLightPosition = glGetUniformLocation(montagneProg, "l_position");
+  LightInfoGPU.locLightIntensities = glGetUniformLocation(montagneProg, "l_intensity"); // a.k.a the color of the light
+  LightInfoGPU.locLightAttenuation = glGetUniformLocation(montagneProg, "l_attenuation");
 
+  // EAU
+  eauProg = LoadShaders("shaders/WaterShader.vert", "shaders/WaterShader.frag");
 
-  */
+  MatrixIDMVP_eau = glGetUniformLocation(eauProg, "MVP");
+  MatrixIDModel_eau = glGetUniformLocation(eauProg, "MODEL");
+  Hauteur_eau_uniform = glGetUniformLocation(eauProg, "Hauteur_eau");
 }
 //----------------------------------------
 int main(int argc, char **argv)
@@ -197,7 +214,7 @@ int main(int argc, char **argv)
   initOpenGL();
   initPoints(tSommets, tColors, N, w, h);
   nbTriangle = initFaces(&tIndices, N);
-  
+
   generateDiamondSquare(tSommets, N, maxHauteur);
 
   computeNormales(tNormales, tSommets, tIndices, N, nbTriangle);
@@ -216,7 +233,8 @@ int main(int argc, char **argv)
   glutMainLoop();
 
   clearBuffers();
-  glDeleteProgram(programID);
+  glDeleteProgram(montagneProg);
+  glDeleteProgram(eauProg);
   deleteVBO();
 
   return 0;
@@ -224,8 +242,8 @@ int main(int argc, char **argv)
 
 void genereVBO()
 {
-  glGenBuffers(1, &VAO);
-  glBindVertexArray(VAO); // ici on bind le VAO , c'est lui qui recupèrera les configurations des VBO glVertexAttribPointer , glEnableVertexAttribArray...
+  glGenVertexArrays(1, &VAO_Montagne);
+  glBindVertexArray(VAO_Montagne);
 
   if (glIsBuffer(VBO_sommets) == GL_TRUE)
     glDeleteBuffers(1, &VBO_sommets);
@@ -257,12 +275,40 @@ void genereVBO()
   cout << "taille indices: " << nbTriangle * sizeof(glm::uvec3) << "\n";
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBO_indices);
   glBufferData(GL_ELEMENT_ARRAY_BUFFER, nbTriangle * sizeof(glm::uvec3), tIndices, GL_STATIC_DRAW);
-  // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(iTest), iTest, GL_STATIC_DRAW);
 
   glEnableVertexAttribArray(indexVertex);
   glEnableVertexAttribArray(indexNormale);
   glEnableVertexAttribArray(indexColors);
 
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindVertexArray(0);
+
+  glGenVertexArrays(1, &VAO_Eau);
+  glBindVertexArray(VAO_Eau);
+
+  // GENERATION DEAU
+  if (glIsBuffer(VBO_sommets_eau) == GL_TRUE)
+    glDeleteBuffers(1, &VBO_sommets_eau);
+  glGenBuffers(1, &VBO_sommets_eau);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO_sommets_eau);
+  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), tEauSommets, GL_STATIC_DRAW);
+  glVertexAttribPointer(indexVertexEau, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+
+  if (glIsBuffer(VBO_normales_eau) == GL_TRUE)
+    glDeleteBuffers(1, &VBO_normales_eau);
+  glGenBuffers(1, &VBO_normales_eau);
+  glBindBuffer(GL_ARRAY_BUFFER, VBO_normales_eau);
+  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), tEauNormales, GL_STATIC_DRAW);
+  glVertexAttribPointer(indexNormaleEau, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+  
+  if (glIsBuffer(VBO_indices_eau) == GL_TRUE)
+    glDeleteBuffers(1, &VBO_indices_eau);
+  glGenBuffers(1, &VBO_indices_eau); // ATTENTIOn IBO doit etre un GL_ELEMENT_ARRAY_BUFFER
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBO_indices_eau);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * sizeof(glm::uvec3), tEauIndices, GL_STATIC_DRAW);
+
+  glEnableVertexAttribArray(indexVertexEau);
+  glEnableVertexAttribArray(indexNormaleEau);
   // une fois la config terminée
   // on désactive le dernier VBO et le VAO pour qu'ils ne soit pas accidentellement modifié
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -275,7 +321,8 @@ void deleteVBO()
   glDeleteBuffers(1, &VBO_normales);
   glDeleteBuffers(1, &VBO_indices);
   glDeleteBuffers(1, &VBO_Colors);
-  glDeleteBuffers(1, &VAO);
+  glDeleteBuffers(1, &VAO_Montagne);
+  glDeleteBuffers(1, &VAO_Eau);
 }
 
 /* fonction d'affichage */
@@ -297,8 +344,8 @@ void affichage()
   Model = glm::rotate(Model, glm::radians(cameraAngleY), glm::vec3(0, 1, 0));
   // Model = glm::scale(Model,glm::vec3(.8, .8, .8));
   MVP = Projection * View * Model;
-  traceObjet(); // trace VBO avec ou sans shader
-
+  traceMontagne();
+  traceEau();
   /* on force l'affichage du resultat */
   glutPostRedisplay();
   glutSwapBuffers();
@@ -306,16 +353,15 @@ void affichage()
 
 //-------------------------------------
 // Trace le tore 2 via le VAO
-void traceObjet()
+void traceMontagne()
 {
   // Use  shader & MVP matrix   MVP = Projection * View * Model;
-  glUseProgram(programID);
+  glUseProgram(montagneProg);
 
   // on envoie les données necessaires aux shaders */
   glUniformMatrix4fv(MatrixIDMVP, 1, GL_FALSE, &MVP[0][0]);
   glUniformMatrix4fv(MatrixIDView, 1, GL_FALSE, &View[0][0]);
   glUniformMatrix4fv(MatrixIDModel, 1, GL_FALSE, &Model[0][0]);
-  // glUniformMatrix4fv(MatrixIDPerspective, 1, GL_FALSE, &Projection[0][0]);
 
   glUniform3f(locCameraPosition, cameraPosition.x, cameraPosition.y, cameraPosition.z);
 
@@ -323,18 +369,29 @@ void traceObjet()
   glUniform3f(LightInfoGPU.locLightPosition, LightInfoCPU.position.x, LightInfoCPU.position.y, LightInfoCPU.position.z);
   glUniform3f(LightInfoGPU.locLightIntensities, LightInfoCPU.intensity.x, LightInfoCPU.intensity.y, LightInfoCPU.intensity.z);
   glUniform1f(LightInfoGPU.locLightAttenuation, LightInfoCPU.attenuation);
-  /*
-   glUniform1f(locmaterialShininess,materialShininess);
-   glUniform3f(locmaterialSpecularColor,materialSpecularColor.x,materialSpecularColor.y,materialSpecularColor.z);
-
-
-  */
 
   // pour l'affichage
-  glBindVertexArray(VAO);                                           // on active le VAO
+  glBindVertexArray(VAO_Montagne);                                  // on active le VAO
   glDrawElements(GL_TRIANGLES, nbTriangle * 3, GL_UNSIGNED_INT, 0); // on appelle la fonction dessin
   glBindVertexArray(0);                                             // on desactive les VAO
   glUseProgram(0);                                                  // et le pg
+}
+
+void traceEau()
+{
+  // Use  shader & MVP matrix   MVP = Projection * View * Model;
+  glUseProgram(eauProg);
+
+  // on envoie les données necessaires aux shaders */
+  glUniformMatrix4fv(MatrixIDMVP_eau, 1, GL_FALSE, &MVP[0][0]);
+  glUniformMatrix4fv(MatrixIDModel_eau, 1, GL_FALSE, &Model[0][0]);
+  glUniform1f(Hauteur_eau_uniform, Hauteur_eau);
+
+  // pour l'affichage
+  glBindVertexArray(VAO_Eau);                              // on active le VAO_eau
+  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0); // on appelle la fonction dessin
+  glBindVertexArray(0);                                    // on desactive les VAO_eau
+  glUseProgram(0);                                         // et le pg
 }
 
 void reshape(int w, int h)
@@ -426,6 +483,13 @@ void clavier(unsigned char touche, int x, int y)
     genereVBO();
 
     glutPostRedisplay();
+    break;
+  case 'p': /* hauteur d'eau ++ */
+    Hauteur_eau = Hauteur_eau + 0.1;
+    glutPostRedisplay();
+    break;
+  case 'm': /* hauteur d'eau -- */
+    Hauteur_eau = Hauteur_eau - 0.1;
     break;
 
   case 'q': /*la touche 'q' permet de quitter le programme */
