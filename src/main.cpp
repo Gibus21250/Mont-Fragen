@@ -18,7 +18,7 @@
 using namespace glm;
 using namespace std;
 
-const int N = 2; // Correspond à la résolutions
+const int N = 3; // Correspond à la résolutions
 
 const int nbVertex = (pow(2, N) + 1) * (pow(2, N) + 1);
 int nbTriangle = 0;
@@ -196,7 +196,6 @@ int main(int argc, char **argv)
 
   initOpenGL();
   initPoints(tSommets, tColors, N, w, h);
-  cout << "oui\n";
   nbTriangle = initFaces(&tIndices, N);
   cout << "nbTriangle générée:" << nbTriangle << "\n";
   cout << "nbPoint:" << nbVertex << "\n";
@@ -442,7 +441,19 @@ void clavier(unsigned char touche, int x, int y)
     generateDiamondSquare(tSommets, N, 5, H);
     genereVBO();
 
-    cout << "generation...\n";
+    cout << "generation...\n\n";
+    cout << "nbTriangle générée:" << nbTriangle << "\n";
+    cout << "nbPoint:" << nbVertex << "\n";
+    cout << "----------\n";
+    for (size_t i = 0; i < nbTriangle; i++)
+    {
+      cout << tIndices[i].x << " " << tIndices[i].y << " " << tIndices[i].z << "\n";
+    }
+    for (size_t i = 0; i < nbVertex; i++)
+    {
+      cout << tSommets[i].x << " " << tSommets[i].y << " " << tSommets[i].z << "\n";
+    }
+
     glutPostRedisplay();
     break;
 
