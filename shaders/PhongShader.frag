@@ -38,11 +38,23 @@ void main() {
 
     vec3 rtolight = reflect(-toLight, nvNormal);
     rtolight = normalize(rtolight);
-    
-    
-    vec3 colorA = l_ambientCoefficient * fragColor;
-    vec3 colorD = max(0, dot(nvNormal, toLight)) * l_intensity * fragColor;
-    vec3 colorS = pow(max(0, dot(toCamera, rtolight)), 5) * fragColor;
 
-    finalColor = vec4(colorA, 1) + vec4(colorD, 1);
+    vec3 colorA = vec3(0.,0.,0.);
+    vec3 colorD = vec3(0.,0.,0.);
+    vec3 colorS = vec3(0.,0.,0.);
+
+    if(fragPosition.y > 22)
+    {
+        colorA = l_ambientCoefficient * vec3(255/255.,250/255.,250/255.);
+        colorD = max(0, dot(nvNormal, toLight)) * l_intensity * vec3(255/255.,250/255.,250/255.);
+        colorS = pow(max(0, dot(toCamera, rtolight)), 5) *  vec3(255/255.,250/255.,250/255.);
+    }
+    else
+    {
+        colorA = l_ambientCoefficient * vec3(63/255.,34/255.,4/255.);
+        colorD = max(0, dot(nvNormal, toLight)) * l_intensity * vec3(63/255.,34/255.,4/255.);
+        colorS = pow(max(0, dot(toCamera, rtolight)), 5) * vec3(63/255.,34/255.,4/255.);
+    }
+
+    finalColor = vec4(colorA, 1.) + vec4(colorD, 1.) + vec4(colorS,1.);
 }
