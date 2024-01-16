@@ -86,6 +86,9 @@ void generateDiamondSquare(glm::vec3 *points, uint N, double heightMax)
 
     int chunkSize = matSize - 1; // taille du chunk à traiter
     double tH = -1;
+    double f = 0;
+    double at = randomFrom(0.05, 0.15);
+
     while (chunkSize > 1)
     {
         int half = chunkSize / 2;
@@ -154,7 +157,10 @@ void generateDiamondSquare(glm::vec3 *points, uint N, double heightMax)
                 // points[x + y * matSize].y = avg + randomFrom(-1, 1);
             }
         }
-        tH++;
+
+        f = randomFrom(0.8, 1.2);
+        tH = tH + f + at;
+        at = at - 0.04;
         chunkSize = half;
     }
 }
