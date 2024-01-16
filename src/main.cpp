@@ -18,9 +18,9 @@
 using namespace glm;
 using namespace std;
 
-const int N = 3; // Correspond à la résolutions
+const int N = 2; // Correspond à la résolutions
 
-const int nbVertex = (2 * N + 1) * (2 * N + 1);
+const int nbVertex = (pow(2, N) + 1) * (pow(2, N) + 1);
 int nbTriangle = 0;
 
 glm::vec3 *tSommets;
