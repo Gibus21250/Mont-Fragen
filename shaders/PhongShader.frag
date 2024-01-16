@@ -39,5 +39,5 @@ void main() {
     vec3 colorS = pow(max(0, dot(toCamera, rtolight)), 5) * vec3(1.,0.,0.) * 1/dist2;
 
     //finalColor = vec4(colorA, 1.) + vec4(colorD, 1.)+ vec4(colorS, 1);
-    finalColor = vec4(1,0,0, 1.);
+    finalColor = vec4(.55,0.25,0.1, 1.);
 }

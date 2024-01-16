@@ -64,16 +64,18 @@ float cameraAngleX;
 float cameraAngleY;
 float cameraDistance = 0.;
 
+
 // variables Handle d'opengl
 //--------------------------
 GLuint programMontagne;
 GLuint programEau;                                                    // handle pour le shader
-GLuint MatrixIDMVP, MatrixIDView, MatrixIDModel, MatrixIDPerspective,MatrixIDMVP_eau,MatrixIDModel_eau; // handle pour la matrice MVP
+GLuint MatrixIDMVP, MatrixIDView, MatrixIDModel, MatrixIDPerspective,MatrixIDMVP_eau,MatrixIDModel_eau,Hauteur_eau_uniform; // handle pour la matrice MVP
 GLuint VBO_sommets, VBO_normales, VBO_indices, VBO_UVtext, VAO_montagne;
 GLuint VBO_sommets_eau, VAO_eau;
 GLuint locCameraPosition;
 GLuint locmaterialShininess;
 GLuint locmaterialSpecularColor;
+GLfloat Hauteur_eau = 0;
 
 struct LightInfoGPU
 {
@@ -106,8 +108,8 @@ vec3 materialSpecularColor(1., .1, 1); // couleur du materiau
 glm::mat4 MVP;                     // justement la voilà el famoso
 glm::mat4 Model, View, Projection; // Matrices constituant MVP
 
-int screenHeight = 1000;
-int screenWidth = 1000;
+int screenHeight = 800;
+int screenWidth = 800;
 
 // pour la texcture
 //-------------------
@@ -138,6 +140,9 @@ void initOpenGL(void)
   // glCullFace(GL_BACK);    // on spécifie queil faut éliminer les face arriere
   // glEnable(GL_CULL_FACE); // on active l'élimination des faces qui par défaut n'est pas active
   glEnable(GL_DEPTH_TEST);
+  glDisable(GL_CULL_FACE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   // le shader Phong
   programMontagne = LoadShaders("shaders/PhongShader.vert", "shaders/PhongShader.frag");
 
@@ -167,6 +172,8 @@ void initOpenGL(void)
 
   MatrixIDMVP_eau = glGetUniformLocation(programEau, "MVP");
   MatrixIDModel_eau = glGetUniformLocation(programEau, "MODEL");
+  Hauteur_eau_uniform = glGetUniformLocation(programEau, "Hauteur_eau");
+
 }
 //----------------------------------------
 int main(int argc, char **argv)
@@ -327,8 +334,9 @@ void affichage()
   // Model = glm::scale(Model,glm::vec3(.8, .8, .8));
   MVP = Projection * View * Model;
 
-  traceEau();
+
   traceMontagne(); // trace VBO avec ou sans shader
+  traceEau();
 
   /* on force l'affichage du resultat */
   glutPostRedisplay();
@@ -372,6 +380,8 @@ void traceEau()
   // on envoie les données necessaires aux shaders */
   glUniformMatrix4fv(MatrixIDMVP_eau, 1, GL_FALSE, &MVP[0][0]);
   glUniformMatrix4fv(MatrixIDModel_eau, 1, GL_FALSE, &Model[0][0]);
+  glUniform1f(Hauteur_eau_uniform,Hauteur_eau);
+
 
   // pour l'affichage
   glBindVertexArray(VAO_eau);                                       // on active le VAO_montagne
@@ -455,6 +465,14 @@ void clavier(unsigned char touche, int x, int y)
     break;
   case 'g': /* Affichage en mode sommets seuls */
     nbTriangle--;
+    glutPostRedisplay();
+    break;
+  case 'p': /* hauteur d'eau ++ */
+    Hauteur_eau=Hauteur_eau+0.1;
+    glutPostRedisplay();
+    break;
+  case 'm': /* hauteur d'eau -- */
+    Hauteur_eau=Hauteur_eau-0.1;
     glutPostRedisplay();
     break;
 

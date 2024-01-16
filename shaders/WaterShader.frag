@@ -4,5 +4,5 @@ in vec4 fragPosition;
 out vec4 finalColor;
 
 void main() {
-    finalColor = vec4(0.,0.,1., 1.);
+    finalColor = vec4(0.,0.5,1.,0.5);
 }
