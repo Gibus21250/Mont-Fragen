@@ -10,31 +10,31 @@ double distance(double x1, double y1, double x2, double y2)
 
 uint initFaces(glm::uvec3 **faces, unsigned int N)
 {
-    #define PAS 8
-    *faces = (glm::uvec3*) malloc(PAS * sizeof(glm::uvec3));
-    
+#define PAS 8
+    *faces = (glm::uvec3 *)malloc(PAS * sizeof(glm::uvec3));
+
     int sizeBuff = PAS;
 
     const int matSize = 2 * N + 1;
     uint indiceFace = 0;
 
-    // Pour chaque colonne
+    // Pour chaque ligne
     for (int i = 0; i < matSize - 1; i++)
-    {    
-        // Pour chaque lignes
+    {
+        // Pour chaque colonne
         for (int j = 0; j < matSize - 1; j++)
         {
-            if((indiceFace+2) > sizeBuff)
+            if ((indiceFace + 2) > sizeBuff)
             {
-                *faces = (glm::uvec3*) realloc(*faces, (sizeBuff + PAS) * sizeof(glm::uvec3));
+                *faces = (glm::uvec3 *)realloc(*faces, (sizeBuff + PAS) * sizeof(glm::uvec3));
                 sizeBuff += PAS;
             }
 
-            int hg = i + matSize * j;           // Haut gauche
-            int hd = i + 1 + matSize * j;       // Haut droite
-            int bg = i + matSize * (j + 1);     // Bas gauche
-            int bd = i + 1 + matSize * (j + 1); // Bas droite
-            
+            int hg = j + matSize * i;           // Haut gauche
+            int hd = j + 1 + matSize * i;       // Haut droite
+            int bg = j + matSize * (i + 1);     // Bas gauche
+            int bd = j + 1 + matSize * (i + 1); // Bas droite
+
             (*faces)[indiceFace] = {
                 hg, bg, hd};
             indiceFace++;
@@ -47,20 +47,29 @@ uint initFaces(glm::uvec3 **faces, unsigned int N)
     return indiceFace;
 }
 
-void initPoints(glm::vec3 *points, unsigned int N, float w, float h)
+void initPoints(glm::vec3 *points, glm::vec3 *colors, unsigned int N, float w, float h)
 {
     int matSize = 2 * N + 1;
     const double xStep = w / (matSize - 1);
     const double yStep = h / (matSize - 1);
 
+    // Pour chaque lignes
     for (int i = 0; i < matSize; i++)
     {
+        // Chaque colonnes
         for (int j = 0; j < matSize; j++)
         {
-            points[i + j * (2 * N + 1)] = {
+            points[j + i * (2 * N + 1)] = {
                 -w / 2 + i * xStep,
                 0,
                 h / 2 - j * yStep};
+
+            // Rouge: ligne
+            // Bleu: colonne
+            colors[j + i * (2 * N + 1)] = {
+                (double)j / matSize,
+                0,
+                (double)i / matSize};
         }
     }
 }
@@ -73,10 +82,10 @@ void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H)
     srand(time(NULL));
 
     // 4 corners initialized
-    points[0].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
-    points[(2 * N + 1)].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
-    points[2 * (2 * N + 1) * N].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
-    points[2 * (2 * N + 1) * N + 2 * N].y = (rand() / (RAND_MAX + 1.0)) * heightMax;
+    points[0].y = (rand() / (RAND_MAX + 1.0)) * heightMax;                             // coin haut gauche
+    points[(2 * N)].y = (rand() / (RAND_MAX + 1.0)) * heightMax;                       // coin haut droit
+    points[(2 * N + 1) * (2 * N)].y = (rand() / (RAND_MAX + 1.0)) * heightMax;         // coin bas gauche
+    points[(2 * N + 1) * (2 * N + 1) - 1].y = (rand() / (RAND_MAX + 1.0)) * heightMax; // coin bas droit
 
     int chunkSize = matSize - 1; // taille du chunk à traiter
 
@@ -91,20 +100,13 @@ void generateDiamondSquare(glm::vec3 *points, uint N, float heightMax, double H)
                 double avg = (points[x - half + (y - half) * (2 * N + 1)].y +
                               points[x + half + (y - half) * (2 * N + 1)].y +
                               points[x - half + (y + half) * (2 * N + 1)].y +
-                              points[x + half + (y + half) * (2 * N + 1)].y)
-                              /4;
-                /*
-                points[x - half][y - half].y +
-                    points[x + half][y - half].y +
-                    points[x - half][y + half].y +
-                    points[x + half][y + half].y*/
+                              points[x + half + (y + half) * (2 * N + 1)].y) /
+                             4;
 
                 // TODO ajuster si necessaire
-                double dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y - half) * (2 * N + 1)]))
-                + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y - half) * (2 * N + 1)])) 
-                + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y + half) * (2 * N + 1)])) 
-                + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y + half) * (2 * N + 1)]));
+                double dist = sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y - half) * (2 * N + 1)])) + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y - half) * (2 * N + 1)])) + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x - half + (y + half) * (2 * N + 1)])) + sqrt(glm::dot(points[x + y * (2 * N + 1)], points[x + half + (y + half) * (2 * N + 1)]));
 
+                dist = dist / 4;
                 points[x + y * (2 * N + 1)].y = avg + delta(dist, H);
             }
         }
@@ -163,5 +165,4 @@ double delta(double distance, double H)
 
 void computeNormales(glm::vec3 *normales, uint N)
 {
-
 }
