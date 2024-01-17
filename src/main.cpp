@@ -15,6 +15,7 @@
 // Include GLM
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+
 using namespace glm;
 using namespace std;
 
@@ -26,11 +27,34 @@ double maxHauteur = 25;
 
 const int nbVertex = (pow(2, N) + 1) * (pow(2, N) + 1);
 int nbTriangle = 0;
+float floatant[]= {0};
 
 glm::vec3 *tSommets;
 glm::vec3 *tNormales;
 glm::uvec3 *tIndices;
 glm::vec3 *tColors;
+struct Texture
+{
+  glm::vec3 color;
+  glm::vec3 diffuse;
+  glm::vec3 specular;
+};
+
+Texture snow  = {glm::vec3(250,255,255),glm::vec3(250,255,255),glm::vec3(255,255,255)};
+Texture stone = {glm::vec3(146,142,133),glm::vec3(146,142,133),glm::vec3(0,0,0)};
+Texture grass = {glm::vec3(126,200,80),glm::vec3(126,200,80),glm::vec3(50,50,50)};
+Texture sand = {glm::vec3(224,205,169),glm::vec3(224,205,169),glm::vec3(50,50,50)};
+
+struct Map
+{
+  double H_neige = 24; // hauteur uniquement neige
+  double h_neige = 22; // hauteur min neige
+
+  double H_eau = 2; // hauteur eau
+  double accentuation_orientation = 0.1; 
+
+  glm::vec2 orientation = glm::vec2(0,1); // x:E , -x:W , y:N , -y:S
+}Map;
 
 glm::vec3 tEauSommets[] = {
     {-w/2, 0, -h/2},
@@ -85,9 +109,16 @@ GLuint locmaterialShininess;
 GLuint locmaterialSpecularColor;
 
 GLuint eauProg;
-GLuint MatrixIDMVP_eau, MatrixIDModel_eau, Hauteur_eau_uniform;
+GLuint MatrixIDMVP_eau, MatrixIDModel_eau, H_eau_uniform;
 GLuint VBO_sommets_eau, VBO_normales_eau, VBO_indices_eau, VAO_Eau;
-GLfloat Hauteur_eau = 0;
+
+
+GLuint locSnowcolor,locSnowdiffuse,locSnowSpecular;
+GLuint locStonecolor,locStonediffuse,locStoneSpecular;
+GLuint locGrasscolor,locGrassdiffuse,locGrassSpecular;
+GLuint locSandcolor,locSanddiffuse,locSandSpecular;
+
+GLuint locMap1,locMap2;
 
 struct LightInfoGPU
 {
@@ -107,7 +138,7 @@ struct LightInfoCPU
 
 // location des VBO
 //------------------
-GLuint indexVertex = 0, indexNormale = 1, indexColors = 2;
+GLuint indexVertex = 0, indexNormale = 1, indexColors = 2 ;
 GLuint indexVertexEau = 0, indexNormaleEau = 1;
 
 // variable pour paramétrage eclairage
@@ -174,18 +205,40 @@ void initOpenGL(void)
   LightInfoGPU.locLightIntensities = glGetUniformLocation(montagneProg, "l_intensity"); // a.k.a the color of the light
   LightInfoGPU.locLightAttenuation = glGetUniformLocation(montagneProg, "l_attenuation");
 
+  // Map
+
+  locSnowcolor = glGetUniformLocation(montagneProg, "snow_color");
+  locSnowdiffuse = glGetUniformLocation(montagneProg, "snow_diffuse");
+  locSnowSpecular = glGetUniformLocation(montagneProg, "snow_specular");
+
+  locStonecolor = glGetUniformLocation(montagneProg, "stone_color");
+  locStonediffuse = glGetUniformLocation(montagneProg, "stone_diffuse");
+  locStoneSpecular = glGetUniformLocation(montagneProg, "stone_specular");
+
+  locGrasscolor = glGetUniformLocation(montagneProg, "grass_color");
+  locGrassdiffuse = glGetUniformLocation(montagneProg, "grass_diffuse");
+  locGrassSpecular = glGetUniformLocation(montagneProg, "grass_specular");
+
+  locSandcolor = glGetUniformLocation(montagneProg, "sand_color");
+  locSanddiffuse = glGetUniformLocation(montagneProg, "sand_diffuse");
+  locSandSpecular = glGetUniformLocation(montagneProg, "sand_specular");
+
+  locMap1 = glGetUniformLocation(montagneProg, "Map1");
+  locMap2 = glGetUniformLocation(montagneProg, "Map2");
+
   // EAU
+
   eauProg = LoadShaders("shaders/WaterShader.vert", "shaders/WaterShader.frag");
 
   MatrixIDMVP_eau = glGetUniformLocation(eauProg, "MVP");
   MatrixIDModel_eau = glGetUniformLocation(eauProg, "MODEL");
-  Hauteur_eau_uniform = glGetUniformLocation(eauProg, "Hauteur_eau");
+  H_eau_uniform = glGetUniformLocation(eauProg, "Hauteur_eau");
+
 }
 //----------------------------------------
 int main(int argc, char **argv)
 //----------------------------------------
 {
-
   /* initialisation de glut et creation
      de la fenetre */
 
@@ -228,7 +281,6 @@ int main(int argc, char **argv)
   glutReshapeFunc(reshape);
   glutMouseFunc(mouse);
   glutMotionFunc(mouseMotion);
-
   /* Entree dans la boucle principale glut */
   glutMainLoop();
 
@@ -370,6 +422,25 @@ void traceMontagne()
   glUniform3f(LightInfoGPU.locLightIntensities, LightInfoCPU.intensity.x, LightInfoCPU.intensity.y, LightInfoCPU.intensity.z);
   glUniform1f(LightInfoGPU.locLightAttenuation, LightInfoCPU.attenuation);
 
+  glUniform3f(locMap1,Map.H_neige,Map.h_neige,Map.H_eau);
+  glUniform3f(locMap2,Map.accentuation_orientation,Map.orientation.x,Map.orientation.y);
+  
+  glUniform3f(locSnowcolor,snow.color.x,snow.color.y,snow.color.z);
+  glUniform3f(locSnowdiffuse,snow.diffuse.x,snow.diffuse.y,snow.diffuse.z);
+  glUniform3f(locSnowSpecular,snow.specular.x,snow.specular.y,snow.specular.z);
+
+  glUniform3f(locStonecolor,stone.color.x,stone.color.y,stone.color.z);
+  glUniform3f(locStonediffuse,stone.diffuse.x,stone.diffuse.y,stone.diffuse.z);
+  glUniform3f(locStoneSpecular,stone.specular.x,stone.specular.y,stone.specular.z);
+
+  glUniform3f(locGrasscolor,grass.color.x,grass.color.y,grass.color.z);
+  glUniform3f(locGrassdiffuse,grass.diffuse.x,grass.diffuse.y,grass.diffuse.z);
+  glUniform3f(locGrassSpecular,grass.specular.x,grass.specular.y,grass.specular.z);
+
+  glUniform3f(locSandcolor,sand.color.x,sand.color.y,sand.color.z);
+  glUniform3f(locSanddiffuse,sand.diffuse.x,sand.diffuse.y,sand.diffuse.z);
+  glUniform3f(locSandSpecular,sand.specular.x,sand.specular.y,sand.specular.z);
+
   // pour l'affichage
   glBindVertexArray(VAO_Montagne);                                  // on active le VAO
   glDrawElements(GL_TRIANGLES, nbTriangle * 3, GL_UNSIGNED_INT, 0); // on appelle la fonction dessin
@@ -385,7 +456,7 @@ void traceEau()
   // on envoie les données necessaires aux shaders */
   glUniformMatrix4fv(MatrixIDMVP_eau, 1, GL_FALSE, &MVP[0][0]);
   glUniformMatrix4fv(MatrixIDModel_eau, 1, GL_FALSE, &Model[0][0]);
-  glUniform1f(Hauteur_eau_uniform, Hauteur_eau);
+  glUniform1f(H_eau_uniform, Map.H_eau);
 
   // pour l'affichage
   glBindVertexArray(VAO_Eau);                              // on active le VAO_eau
@@ -485,11 +556,11 @@ void clavier(unsigned char touche, int x, int y)
     glutPostRedisplay();
     break;
   case 'p': /* hauteur d'eau ++ */
-    Hauteur_eau = Hauteur_eau + 0.1;
+    Map.H_eau = Map.H_eau + 0.1;
     glutPostRedisplay();
     break;
   case 'm': /* hauteur d'eau -- */
-    Hauteur_eau = Hauteur_eau - 0.1;
+    Map.H_eau = Map.H_eau - 0.1;
     break;
 
   case 'q': /*la touche 'q' permet de quitter le programme */
