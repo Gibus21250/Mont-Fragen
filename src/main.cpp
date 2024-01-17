@@ -27,7 +27,9 @@ double maxHauteur = 25;
 
 const int nbVertex = (pow(2, N) + 1) * (pow(2, N) + 1);
 int nbTriangle = 0;
-float floatant[]= {0};
+float floatant[] = {0};
+
+double t = 0;
 
 glm::vec3 *tSommets;
 glm::vec3 *tNormales;
@@ -40,10 +42,10 @@ struct Texture
   glm::vec3 specular;
 };
 
-Texture snow  = {glm::vec3(250,255,255),glm::vec3(250,255,255),glm::vec3(255,255,255)};
-Texture stone = {glm::vec3(146,142,133),glm::vec3(146,142,133),glm::vec3(0,0,0)};
-Texture grass = {glm::vec3(126,200,80),glm::vec3(126,200,80),glm::vec3(50,50,50)};
-Texture sand = {glm::vec3(224,205,169),glm::vec3(224,205,169),glm::vec3(50,50,50)};
+Texture snow = {glm::vec3(250, 255, 255), glm::vec3(250, 255, 255), glm::vec3(255, 255, 255)};
+Texture stone = {glm::vec3(146, 142, 133), glm::vec3(146, 142, 133), glm::vec3(0, 0, 0)};
+Texture grass = {glm::vec3(126, 200, 80), glm::vec3(126, 200, 80), glm::vec3(50, 50, 50)};
+Texture sand = {glm::vec3(224, 205, 169), glm::vec3(224, 205, 169), glm::vec3(50, 50, 50)};
 
 struct Map
 {
@@ -51,26 +53,12 @@ struct Map
   double h_neige = 22; // hauteur min neige
 
   double H_eau = 2; // hauteur eau
-  double accentuation_orientation = 0.1; 
+  double accentuation_orientation = 0.1;
 
-  glm::vec2 orientation = glm::vec2(0,1); // x:E , -x:W , y:N , -y:S
-}Map;
+  glm::vec2 orientation = glm::vec2(0, 1); // x:E , -x:W , y:N , -y:S
+} Map;
 
-glm::vec3 tEauSommets[] = {
-    {-w/2, 0, -h/2},
-    {-w/2, 0, h/2},
-    {w/2, 0, -h/2},
-    {w/2, 0, h/2}};
-
-glm::uvec3 tEauIndices[] = {
-    {0, 1, 2},
-    {2, 1, 3}};
-
-glm::vec3 tEauNormales[] = {
-    {0, 1, 0},
-    {0, 1, 0},
-    {0, 1, 0},
-    {0, 1, 0}};
+glm::vec3 *tEauSommets;
 
 void initBuffers();
 void clearBuffers();
@@ -109,16 +97,15 @@ GLuint locmaterialShininess;
 GLuint locmaterialSpecularColor;
 
 GLuint eauProg;
-GLuint MatrixIDMVP_eau, MatrixIDModel_eau, H_eau_uniform;
+GLuint MatrixIDMVP_eau, MatrixIDModel_eau, H_eau_uniform, t_fac_uniform;
 GLuint VBO_sommets_eau, VBO_normales_eau, VBO_indices_eau, VAO_Eau;
 
+GLuint locSnowcolor, locSnowdiffuse, locSnowSpecular;
+GLuint locStonecolor, locStonediffuse, locStoneSpecular;
+GLuint locGrasscolor, locGrassdiffuse, locGrassSpecular;
+GLuint locSandcolor, locSanddiffuse, locSandSpecular;
 
-GLuint locSnowcolor,locSnowdiffuse,locSnowSpecular;
-GLuint locStonecolor,locStonediffuse,locStoneSpecular;
-GLuint locGrasscolor,locGrassdiffuse,locGrassSpecular;
-GLuint locSandcolor,locSanddiffuse,locSandSpecular;
-
-GLuint locMap1,locMap2;
+GLuint locMap1, locMap2;
 
 struct LightInfoGPU
 {
@@ -138,7 +125,7 @@ struct LightInfoCPU
 
 // location des VBO
 //------------------
-GLuint indexVertex = 0, indexNormale = 1, indexColors = 2 ;
+GLuint indexVertex = 0, indexNormale = 1, indexColors = 2;
 GLuint indexVertexEau = 0, indexNormaleEau = 1;
 
 // variable pour paramétrage eclairage
@@ -166,6 +153,7 @@ void initBuffers()
   tSommets = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
   tColors = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
   tNormales = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
+  tEauSommets = (glm::vec3 *)malloc(nbVertex * sizeof(glm::vec3));
 }
 
 void clearBuffers()
@@ -174,6 +162,7 @@ void clearBuffers()
   free(tNormales);
   free(tIndices);
   free(tColors);
+  free(tEauSommets);
 }
 //----------------------------------------
 void initOpenGL(void)
@@ -233,7 +222,7 @@ void initOpenGL(void)
   MatrixIDMVP_eau = glGetUniformLocation(eauProg, "MVP");
   MatrixIDModel_eau = glGetUniformLocation(eauProg, "MODEL");
   H_eau_uniform = glGetUniformLocation(eauProg, "Hauteur_eau");
-
+  t_fac_uniform = glGetUniformLocation(eauProg, "t");
 }
 //----------------------------------------
 int main(int argc, char **argv)
@@ -241,6 +230,8 @@ int main(int argc, char **argv)
 {
   /* initialisation de glut et creation
      de la fenetre */
+
+  srand(time(NULL));
 
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
@@ -266,6 +257,7 @@ int main(int argc, char **argv)
 
   initOpenGL();
   initPoints(tSommets, tColors, N, w, h);
+  initPoints(tEauSommets, tColors, N, w, h);
   nbTriangle = initFaces(&tIndices, N);
 
   generateDiamondSquare(tSommets, N, maxHauteur);
@@ -343,21 +335,14 @@ void genereVBO()
     glDeleteBuffers(1, &VBO_sommets_eau);
   glGenBuffers(1, &VBO_sommets_eau);
   glBindBuffer(GL_ARRAY_BUFFER, VBO_sommets_eau);
-  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), tEauSommets, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, nbVertex * sizeof(glm::vec3), tEauSommets, GL_STATIC_DRAW);
   glVertexAttribPointer(indexVertexEau, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
 
-  if (glIsBuffer(VBO_normales_eau) == GL_TRUE)
-    glDeleteBuffers(1, &VBO_normales_eau);
-  glGenBuffers(1, &VBO_normales_eau);
-  glBindBuffer(GL_ARRAY_BUFFER, VBO_normales_eau);
-  glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), tEauNormales, GL_STATIC_DRAW);
-  glVertexAttribPointer(indexNormaleEau, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
-  
   if (glIsBuffer(VBO_indices_eau) == GL_TRUE)
     glDeleteBuffers(1, &VBO_indices_eau);
   glGenBuffers(1, &VBO_indices_eau); // ATTENTIOn IBO doit etre un GL_ELEMENT_ARRAY_BUFFER
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, VBO_indices_eau);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2 * sizeof(glm::uvec3), tEauIndices, GL_STATIC_DRAW);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, nbTriangle * sizeof(glm::uvec3), tIndices, GL_STATIC_DRAW);
 
   glEnableVertexAttribArray(indexVertexEau);
   glEnableVertexAttribArray(indexNormaleEau);
@@ -398,6 +383,7 @@ void affichage()
   MVP = Projection * View * Model;
   traceMontagne();
   traceEau();
+  t += 0.2;
   /* on force l'affichage du resultat */
   glutPostRedisplay();
   glutSwapBuffers();
@@ -422,24 +408,24 @@ void traceMontagne()
   glUniform3f(LightInfoGPU.locLightIntensities, LightInfoCPU.intensity.x, LightInfoCPU.intensity.y, LightInfoCPU.intensity.z);
   glUniform1f(LightInfoGPU.locLightAttenuation, LightInfoCPU.attenuation);
 
-  glUniform3f(locMap1,Map.H_neige,Map.h_neige,Map.H_eau);
-  glUniform3f(locMap2,Map.accentuation_orientation,Map.orientation.x,Map.orientation.y);
-  
-  glUniform3f(locSnowcolor,snow.color.x,snow.color.y,snow.color.z);
-  glUniform3f(locSnowdiffuse,snow.diffuse.x,snow.diffuse.y,snow.diffuse.z);
-  glUniform3f(locSnowSpecular,snow.specular.x,snow.specular.y,snow.specular.z);
+  glUniform3f(locMap1, Map.H_neige, Map.h_neige, Map.H_eau);
+  glUniform3f(locMap2, Map.accentuation_orientation, Map.orientation.x, Map.orientation.y);
 
-  glUniform3f(locStonecolor,stone.color.x,stone.color.y,stone.color.z);
-  glUniform3f(locStonediffuse,stone.diffuse.x,stone.diffuse.y,stone.diffuse.z);
-  glUniform3f(locStoneSpecular,stone.specular.x,stone.specular.y,stone.specular.z);
+  glUniform3f(locSnowcolor, snow.color.x, snow.color.y, snow.color.z);
+  glUniform3f(locSnowdiffuse, snow.diffuse.x, snow.diffuse.y, snow.diffuse.z);
+  glUniform3f(locSnowSpecular, snow.specular.x, snow.specular.y, snow.specular.z);
 
-  glUniform3f(locGrasscolor,grass.color.x,grass.color.y,grass.color.z);
-  glUniform3f(locGrassdiffuse,grass.diffuse.x,grass.diffuse.y,grass.diffuse.z);
-  glUniform3f(locGrassSpecular,grass.specular.x,grass.specular.y,grass.specular.z);
+  glUniform3f(locStonecolor, stone.color.x, stone.color.y, stone.color.z);
+  glUniform3f(locStonediffuse, stone.diffuse.x, stone.diffuse.y, stone.diffuse.z);
+  glUniform3f(locStoneSpecular, stone.specular.x, stone.specular.y, stone.specular.z);
 
-  glUniform3f(locSandcolor,sand.color.x,sand.color.y,sand.color.z);
-  glUniform3f(locSanddiffuse,sand.diffuse.x,sand.diffuse.y,sand.diffuse.z);
-  glUniform3f(locSandSpecular,sand.specular.x,sand.specular.y,sand.specular.z);
+  glUniform3f(locGrasscolor, grass.color.x, grass.color.y, grass.color.z);
+  glUniform3f(locGrassdiffuse, grass.diffuse.x, grass.diffuse.y, grass.diffuse.z);
+  glUniform3f(locGrassSpecular, grass.specular.x, grass.specular.y, grass.specular.z);
+
+  glUniform3f(locSandcolor, sand.color.x, sand.color.y, sand.color.z);
+  glUniform3f(locSanddiffuse, sand.diffuse.x, sand.diffuse.y, sand.diffuse.z);
+  glUniform3f(locSandSpecular, sand.specular.x, sand.specular.y, sand.specular.z);
 
   // pour l'affichage
   glBindVertexArray(VAO_Montagne);                                  // on active le VAO
@@ -457,12 +443,13 @@ void traceEau()
   glUniformMatrix4fv(MatrixIDMVP_eau, 1, GL_FALSE, &MVP[0][0]);
   glUniformMatrix4fv(MatrixIDModel_eau, 1, GL_FALSE, &Model[0][0]);
   glUniform1f(H_eau_uniform, Map.H_eau);
+  glUniform1f(t_fac_uniform, t);
 
   // pour l'affichage
-  glBindVertexArray(VAO_Eau);                              // on active le VAO_eau
-  glDrawElements(GL_TRIANGLES, 2 * 3, GL_UNSIGNED_INT, 0); // on appelle la fonction dessin
-  glBindVertexArray(0);                                    // on desactive les VAO_eau
-  glUseProgram(0);                                         // et le pg
+  glBindVertexArray(VAO_Eau);                                       // on active le VAO_eau
+  glDrawElements(GL_TRIANGLES, nbTriangle * 3, GL_UNSIGNED_INT, 0); // on appelle la fonction dessin
+  glBindVertexArray(0);                                             // on desactive les VAO_eau
+  glUseProgram(0);                                                  // et le pg
 }
 
 void reshape(int w, int h)
