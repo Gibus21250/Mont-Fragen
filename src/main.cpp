@@ -16,13 +16,14 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+
 using namespace glm;
 using namespace std;
 
-const int N = 8; // Correspond à la résolutions
+const int N = 10; // Correspond à la résolutions
 
-double w = 128; // largeur de la matrice dans le monde
-double h = 128; // longueur de la matrice dans le monde
+double w = 256; // largeur de la matrice dans le monde
+double h = 256; // longueur de la matrice dans le monde
 double maxHauteur = 25;
 
 const int nbVertex = (pow(2, N) + 1) * (pow(2, N) + 1);
@@ -42,10 +43,11 @@ struct Texture
   glm::vec3 specular;
 };
 
-Texture snow = {glm::vec3(250, 255, 255), glm::vec3(250, 255, 255), glm::vec3(255, 255, 255)};
-Texture stone = {glm::vec3(146, 142, 133), glm::vec3(146, 142, 133), glm::vec3(0, 0, 0)};
-Texture grass = {glm::vec3(126, 200, 80), glm::vec3(126, 200, 80), glm::vec3(50, 50, 50)};
-Texture sand = {glm::vec3(224, 205, 169), glm::vec3(224, 205, 169), glm::vec3(50, 50, 50)};
+Texture snow  = {glm::vec3(250,255,255),glm::vec3(250,255,255),glm::vec3(255,255,255)};
+Texture stone = {glm::vec3(146,142,133),glm::vec3(146,142,133),glm::vec3(0,0,0)};
+//Texture stone = {glm::vec3(255, 0, 0), glm::vec3(146,142,133),glm::vec3(0,0,0)};
+Texture grass = {glm::vec3(82,112,72),glm::vec3(82,112,72),glm::vec3(0, 0, 0)};
+Texture sand = {glm::vec3(224,205,169),glm::vec3(224,205,169),glm::vec3(50,50,50)};
 
 struct Map
 {
@@ -55,8 +57,8 @@ struct Map
   double H_eau = 2; // hauteur eau
   double accentuation_orientation = 0.1;
 
-  glm::vec2 orientation = glm::vec2(0, 1); // x:E , -x:W , y:N , -y:S
-} Map;
+  glm::vec3 orientation = glm::vec3(0,0,1); // x:E , -x:W , z:N , -z:S
+}Map;
 
 glm::vec3 *tEauSommets;
 
@@ -408,8 +410,13 @@ void traceMontagne()
   glUniform3f(LightInfoGPU.locLightIntensities, LightInfoCPU.intensity.x, LightInfoCPU.intensity.y, LightInfoCPU.intensity.z);
   glUniform1f(LightInfoGPU.locLightAttenuation, LightInfoCPU.attenuation);
 
-  glUniform3f(locMap1, Map.H_neige, Map.h_neige, Map.H_eau);
-  glUniform3f(locMap2, Map.accentuation_orientation, Map.orientation.x, Map.orientation.y);
+
+  glUniform3f(locMap1,Map.H_neige,Map.h_neige,Map.H_eau);
+  glUniform3f(locMap2,Map.orientation.x,Map.orientation.y,Map.orientation.z);
+  
+  glUniform3f(locSnowcolor,snow.color.x,snow.color.y,snow.color.z);
+  glUniform3f(locSnowdiffuse,snow.diffuse.x,snow.diffuse.y,snow.diffuse.z);
+  glUniform3f(locSnowSpecular,snow.specular.x,snow.specular.y,snow.specular.z);
 
   glUniform3f(locSnowcolor, snow.color.x, snow.color.y, snow.color.z);
   glUniform3f(locSnowdiffuse, snow.diffuse.x, snow.diffuse.y, snow.diffuse.z);
@@ -530,9 +537,9 @@ void clavier(unsigned char touche, int x, int y)
     glutPostRedisplay();
     break;
   case 'j': /* Affichage en mode sommets seuls */
-    clearBuffers();
+    //clearBuffers();
     deleteVBO();
-    initBuffers();
+    //initBuffers();
     initPoints(tSommets, tColors, N, w, h);
     initFaces(&tIndices, N);
     generateDiamondSquare(tSommets, N, maxHauteur);
@@ -548,6 +555,18 @@ void clavier(unsigned char touche, int x, int y)
     break;
   case 'm': /* hauteur d'eau -- */
     Map.H_eau = Map.H_eau - 0.1;
+    break;
+  case 'w':
+    {
+      glm::mat4 matRotf = glm::rotate(glm::mat4(1.0), .1f, glm::vec3(0,1,0));
+      Map.orientation = glm::vec3(matRotf * glm::vec4(Map.orientation, 1.0f));
+    }
+    break;
+   case 'W':
+   {
+    glm::mat4 matRotb = glm::rotate(glm::mat4(1.0), -.1f, glm::vec3(0,1,0));
+    Map.orientation = glm::vec3(matRotb * glm::vec4(Map.orientation, 1.0f));
+   }
     break;
 
   case 'q': /*la touche 'q' permet de quitter le programme */
